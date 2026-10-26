@@ -10,6 +10,30 @@ A real-world, deployment-ready college carpool web application for VESIT student
 
 ---
 
+## 🛠️ Tech Stack & System Architecture
+
+| Layer | Technology | Details |
+| :--- | :--- | :--- |
+| **Frontend Framework** | **Next.js 16 (App Router)** | Modern React framework with Server Components & Turbopack build engine |
+| **UI Library** | **React 19** | Component-driven declarative user interface |
+| **Styling** | **Tailwind CSS v4** | Next-gen utility-first responsive styling |
+| **Icons** | **Lucide React** | Clean, lightweight modern icons |
+| **Backend & APIs** | **Next.js Serverless Routes** | RESTful endpoints (`/api/rides`, `/api/bookings`, `/api/ratings`, `/api/admin/tables`) |
+| **Primary Database** | **TiDB Cloud (Serverless MySQL)** | Distributed, MySQL 8.0+ wire-compatible cloud database hosted on AWS |
+| **Database Driver** | **mysql2/promise** | High-performance MySQL client with connection pooling and SSL/TLS encryption |
+| **Cloud Deployment** | **Vercel** | Automated continuous deployment tracking GitHub `main` branch |
+| **Version Control** | **Git & GitHub** | Distributed version control repository |
+
+### 🗄️ Database & SQL Architecture (DBMS Focus)
+- **Relational Schema Design**: 6 normalized tables (`Users`, `Vehicles`, `Rides`, `Bookings`, `Ratings`, `Ride_Logs`) maintaining 3NF data integrity.
+- **Constraints**: Enforces foreign keys with `ON DELETE CASCADE` and `ON UPDATE CASCADE`, along with business check constraints (`capacity > 0`, `cost_per_seat >= 0`, `seats_requested > 0`, `rating_value BETWEEN 1 AND 5`).
+- **Database Views**: Pre-compiled SQL views for active carpool discovery (`vw_AvailableActiveRides`) and driver performance reporting (`vw_DriverAnalytics`).
+- **Stored Procedures & ACID Transactions**: Transactional seat reservation using row-level locking (`SELECT ... FOR UPDATE`) to prevent race conditions and overbooking (`sp_AcceptBooking`), plus driver manifest generation with SQL Cursors (`sp_DriverRideReport`).
+- **Triggers**: Automated integrity enforcement (`trg_prevent_self_booking`) and audit tracking (`trg_ride_status_audit` logging all status transitions into `Ride_Logs`).
+- **Performance Indexes**: Composite indexes on search filters (`source`, `destination`, `ride_date`, `status`) and foreign key relationships for sub-millisecond query execution.
+
+---
+
 ## 🌟 The Core Flow
 
 1. **Find & Book Rides (Passenger Flow)**:
