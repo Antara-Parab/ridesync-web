@@ -63,7 +63,14 @@ export default function CampusPoolApp() {
   const [adminActiveTable, setAdminActiveTable] = useState<string>('all');
   const [lastRefreshedAt, setLastRefreshedAt] = useState<string>('');
 
-  const [activeTab, setActiveTab] = useState<'find' | 'offer' | 'bookings'>('find');
+  const [activeTab, setActiveTabState] = useState<'find' | 'offer' | 'bookings'>('find');
+
+  const setActiveTab = (tab: 'find' | 'offer' | 'bookings') => {
+    setActiveTabState(tab);
+    try {
+      sessionStorage.setItem('campuspool_active_tab', tab);
+    } catch {}
+  };
   const [myRidesSubTab, setMyRidesSubTab] = useState<'passenger' | 'driver'>('passenger');
   const [rides, setRides] = useState<Ride[]>([]);
   const [bookings, setBookings] = useState<Booking[]>([]);
@@ -301,6 +308,13 @@ export default function CampusPoolApp() {
 
   // Initial data load
   useEffect(() => {
+    try {
+      const savedTab = sessionStorage.getItem('campuspool_active_tab');
+      if (savedTab && ['find', 'offer', 'bookings'].includes(savedTab)) {
+        setActiveTabState(savedTab as any);
+      }
+    } catch {}
+
     const savedUser = localStorage.getItem('campuspool_user');
     if (savedUser) {
       try {
@@ -375,32 +389,53 @@ export default function CampusPoolApp() {
     }
   };
 
-  // Fetch live TiDB admin tables
-  const fetchAdminTables = async () => {
-    setAdminLoading(true);
+  // Fetch live TiDB admin tables (silent flag prevents blocking spinners and spam toasts)
+  const fetchAdminTables = async (silent = false) => {
+    if (!silent) setAdminLoading(true);
     try {
       const res = await fetch('/api/admin/tables');
       const data = await res.json();
       if (data.success) {
         setAdminTables(data.tables);
         setLastRefreshedAt(new Date().toLocaleTimeString());
-        showToast('Live tables refreshed from TiDB database!', 'success');
-      } else {
+        if (!silent) showToast('Live tables refreshed from TiDB database!', 'success');
+      } else if (!silent) {
         showToast(data.error || 'Failed to fetch database tables', 'error');
       }
     } catch {
-      showToast('Network error while refreshing tables', 'error');
+      if (!silent) showToast('Network error while refreshing tables', 'error');
     } finally {
-      setAdminLoading(false);
+      if (!silent) setAdminLoading(false);
     }
   };
 
-  // Initial data load
+  // Background live soft sync (updates data smoothly every 2.5s without reloading or changing tabs)
   useEffect(() => {
-    if (currentUser?.username?.toLowerCase() === 'admin') {
-      fetchAdminTables();
-    }
-  }, [currentUser]);
+    const timer = setInterval(() => {
+      fetchRides();
+      fetchBookings();
+      fetchRatings();
+      if (currentUser?.username?.toLowerCase() === 'admin') {
+        fetchAdminTables(true);
+      }
+    }, 2500);
+
+    const onFocus = () => {
+      fetchRides();
+      fetchBookings();
+      fetchRatings();
+      if (currentUser?.username?.toLowerCase() === 'admin') {
+        fetchAdminTables(true);
+      }
+    };
+
+    window.addEventListener('focus', onFocus);
+
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener('focus', onFocus);
+    };
+  }, [currentUser, searchSource, searchDest]);
 
   // Render admin table rows
   const renderTableData = (tableName: string, data: any[] | undefined) => {
@@ -682,7 +717,9 @@ export default function CampusPoolApp() {
           });
         }
         fetchRides();
-        setActiveTab('find');
+        fetchBookings();
+        setMyRidesSubTab('driver');
+        setActiveTab('bookings');
       } else {
         showToast(data.error || 'Failed to offer ride', 'error');
       }
@@ -888,6 +925,11 @@ export default function CampusPoolApp() {
           </div>
 
           <div className="flex items-center space-x-2 sm:space-x-3">
+            <div className="hidden lg:flex items-center space-x-1.5 px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200/80 text-emerald-800 text-[11px] font-bold select-none shadow-2xs">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              <span>Live Sync</span>
+            </div>
+
             {currentUser?.username?.toLowerCase() === 'admin' ? (
               <div className="flex items-center space-x-2">
                 <a
@@ -903,7 +945,7 @@ export default function CampusPoolApp() {
                 </a>
                 <button
                   type="button"
-                  onClick={fetchAdminTables}
+                  onClick={() => fetchAdminTables(false)}
                   disabled={adminLoading}
                   className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition flex items-center space-x-1.5 shadow-xs cursor-pointer active:scale-95 disabled:opacity-50"
                   title="Refresh Database Tables"
@@ -1036,7 +1078,7 @@ export default function CampusPoolApp() {
                 </a>
                 <button
                   type="button"
-                  onClick={fetchAdminTables}
+                  onClick={() => fetchAdminTables(false)}
                   disabled={adminLoading}
                   className="flex items-center space-x-2 px-4 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 rounded-xl font-extrabold text-xs shadow-lg shadow-emerald-500/20 transition cursor-pointer active:scale-95 disabled:opacity-50"
                 >
