@@ -7,7 +7,7 @@ import {
   ArrowRight, ShieldCheck, Tag, Sparkles, Phone,
   TrendingDown, CheckSquare, Square, LogIn, UserPlus,
   LogOut, User, Lock, ChevronRight, Zap, Trash2, Loader2,
-  Database, RefreshCw, Table, Layers, Star, Flag
+  Database, RefreshCw, Table, Layers, Star, Flag, ExternalLink
 } from 'lucide-react';
 
 interface Ride {
@@ -865,10 +865,17 @@ export default function CampusPoolApp() {
           <div className="flex items-center space-x-2 sm:space-x-3">
             {currentUser?.username?.toLowerCase() === 'admin' ? (
               <div className="flex items-center space-x-2">
-                <span className="hidden sm:inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-purple-50 text-purple-700 border border-purple-200 text-xs font-bold">
-                  <Database className="w-3.5 h-3.5 text-purple-600" />
+                <a
+                  href="https://tidbcloud.com/tidbs/10308908932266543723/sqleditor?orgId=1372813089209377702"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hidden sm:inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-700 hover:text-purple-900 border border-purple-200 text-xs font-bold transition shadow-xs cursor-pointer group"
+                  title="Open TiDB Cloud SQL Editor in new tab"
+                >
+                  <Database className="w-3.5 h-3.5 text-purple-600 group-hover:scale-110 transition" />
                   <span>TiDB Live Tables</span>
-                </span>
+                  <ExternalLink className="w-3 h-3 text-purple-400 group-hover:text-purple-600 transition" />
+                </a>
                 <button
                   type="button"
                   onClick={fetchAdminTables}
@@ -992,14 +999,25 @@ export default function CampusPoolApp() {
                   {lastRefreshedAt && <span className="ml-2 text-slate-400 font-mono text-xs">(Last refreshed: {lastRefreshedAt})</span>}
                 </p>
               </div>
-              <div className="flex items-center space-x-3">
+              <div className="flex flex-wrap items-center gap-2.5">
+                <a
+                  href="https://tidbcloud.com/tidbs/10308908932266543723/sqleditor?orgId=1372813089209377702"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center space-x-1.5 px-4 py-2.5 bg-purple-600/90 hover:bg-purple-600 text-white rounded-xl font-bold text-xs shadow-lg shadow-purple-600/20 transition cursor-pointer active:scale-95 border border-purple-400/30"
+                  title="Open TiDB Cloud SQL Editor in new tab"
+                >
+                  <Database className="w-3.5 h-3.5" />
+                  <span>Open TiDB SQL Editor</span>
+                  <ExternalLink className="w-3 h-3 text-purple-200" />
+                </a>
                 <button
                   type="button"
                   onClick={fetchAdminTables}
                   disabled={adminLoading}
-                  className="flex items-center space-x-2 px-5 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 rounded-xl font-extrabold text-sm shadow-lg shadow-emerald-500/20 transition cursor-pointer active:scale-95 disabled:opacity-50"
+                  className="flex items-center space-x-2 px-4 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 rounded-xl font-extrabold text-xs shadow-lg shadow-emerald-500/20 transition cursor-pointer active:scale-95 disabled:opacity-50"
                 >
-                  <RefreshCw className={`w-4 h-4 ${adminLoading ? 'animate-spin' : ''}`} />
+                  <RefreshCw className={`w-3.5 h-3.5 ${adminLoading ? 'animate-spin' : ''}`} />
                   <span>{adminLoading ? 'Refreshing Tables...' : 'Refresh Tables'}</span>
                 </button>
               </div>
