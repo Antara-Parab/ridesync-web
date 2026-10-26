@@ -66,6 +66,8 @@ CREATE TABLE Bookings (
     seats_requested INT NOT NULL DEFAULT 1,
     booking_status ENUM('PENDING', 'ACCEPTED', 'REJECTED', 'CANCELLED') NOT NULL DEFAULT 'PENDING',
     booked_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    total_fare DECIMAL(8, 2) NOT NULL DEFAULT 0.00,
+    discounted_fare DECIMAL(8, 2) NOT NULL DEFAULT 0.00,
     CONSTRAINT fk_booking_ride FOREIGN KEY (ride_id) 
         REFERENCES Rides(ride_id) ON DELETE CASCADE ON UPDATE CASCADE,
     CONSTRAINT fk_booking_passenger FOREIGN KEY (passenger_id) 

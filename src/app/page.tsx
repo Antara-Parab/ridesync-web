@@ -473,6 +473,16 @@ export default function CampusPoolApp() {
                     displayVal = <span className="font-mono text-slate-600 font-bold">#{val}</span>;
                   }
 
+                  // Fare / Cost formatting (Total Fare, Discounted Fare, Cost Per Seat)
+                  if ((col.toLowerCase().includes('fare') || col.toLowerCase().includes('cost')) && val != null) {
+                    displayVal = <span className="font-bold text-emerald-700">₹{Number(val).toFixed(2)}</span>;
+                  }
+
+                  // Seats formatting
+                  if (col.toLowerCase().includes('seats') && val != null) {
+                    displayVal = <span className="font-bold text-slate-900">{val} seat{Number(val) === 1 ? '' : 's'}</span>;
+                  }
+
                   return (
                     <td key={col} className="px-3 py-2 text-slate-700 whitespace-nowrap">
                       {val === null || val === undefined ? (
@@ -586,6 +596,11 @@ export default function CampusPoolApp() {
     if (currentUser && selectedRide.driver_name?.toLowerCase() === currentUser.username.toLowerCase()) {
       showToast('⚠️ You cannot book a seat on your own ride! You are the driver.', 'error');
       setSelectedRide(null);
+      return;
+    }
+
+    if (requestedSeats > selectedRide.available_seats) {
+      showToast(`⚠️ Only ${selectedRide.available_seats} seat(s) available on this ride! You selected ${requestedSeats}.`, 'error');
       return;
     }
 
@@ -1787,7 +1802,12 @@ export default function CampusPoolApp() {
                                   </div>
                                   <div className="flex justify-between items-baseline">
                                     <span className="text-slate-400">Estimated Fare:</span>
-                                    <span className="font-black text-slate-900 text-sm">₹{b.discounted_fare}</span>
+                                    <div className="text-right">
+                                      {b.total_fare && Number(b.total_fare) > Number(b.discounted_fare) && (
+                                        <span className="line-through text-slate-400 text-[11px] mr-1.5">₹{b.total_fare}</span>
+                                      )}
+                                      <span className="font-black text-slate-900 text-sm">₹{b.discounted_fare}</span>
+                                    </div>
                                   </div>
                                 </div>
                                 <p className="text-[11px] text-amber-700 font-medium">
@@ -1847,7 +1867,12 @@ export default function CampusPoolApp() {
                                   </div>
                                   <div className="flex justify-between items-baseline">
                                     <span className="text-slate-400">Total Payable:</span>
-                                    <span className="font-black text-emerald-700 text-sm">₹{b.discounted_fare}</span>
+                                    <div className="text-right">
+                                      {b.total_fare && Number(b.total_fare) > Number(b.discounted_fare) && (
+                                        <span className="line-through text-slate-400 text-[11px] mr-1.5">₹{b.total_fare}</span>
+                                      )}
+                                      <span className="font-black text-emerald-700 text-sm">₹{b.discounted_fare}</span>
+                                    </div>
                                   </div>
                                 </div>
                                 <p className="text-[11px] text-emerald-800 font-semibold bg-emerald-50 p-2 rounded-lg">
@@ -2109,9 +2134,14 @@ export default function CampusPoolApp() {
                                       <span className="text-slate-400">Seats Requested:</span>
                                       <span className="font-bold text-slate-900">{b.seats_requested} seat(s)</span>
                                     </div>
-                                    <div className="flex justify-between">
+                                    <div className="flex justify-between items-baseline">
                                       <span className="text-slate-400">Fare to Collect:</span>
-                                      <span className="font-black text-emerald-700 text-sm">₹{b.discounted_fare}</span>
+                                      <div className="text-right">
+                                        {b.total_fare && Number(b.total_fare) > Number(b.discounted_fare) && (
+                                          <span className="line-through text-slate-400 text-[11px] mr-1.5">₹{b.total_fare}</span>
+                                        )}
+                                        <span className="font-black text-emerald-700 text-sm">₹{b.discounted_fare}</span>
+                                      </div>
                                     </div>
                                   </div>
                                 </div>
@@ -2230,25 +2260,34 @@ export default function CampusPoolApp() {
               </div>
 
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">Seats to Rent</label>
+                <div className="flex justify-between items-center mb-1.5">
+                  <label className="block font-semibold text-slate-700 text-xs">Seats to Reserve</label>
+                  <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                    {selectedRide.available_seats} seat{selectedRide.available_seats === 1 ? '' : 's'} available
+                  </span>
+                </div>
                 <div className="flex items-center space-x-2">
-                  {[1, 2, 3].map((num) => (
-                    <button
-                      key={num}
-                      type="button"
-                      disabled={num > selectedRide.available_seats}
-                      onClick={() => setRequestedSeats(num)}
-                      className={`flex-1 py-1.5 rounded-lg font-bold text-xs border transition cursor-pointer ${
-                        requestedSeats === num 
-                          ? 'bg-slate-900 text-white border-slate-900' 
-                          : num > selectedRide.available_seats
-                          ? 'bg-slate-100 text-slate-300 border-slate-100 cursor-not-allowed'
-                          : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300'
-                      }`}
-                    >
-                      {num} {num === 1 ? 'Seat' : 'Seats'}
-                    </button>
-                  ))}
+                  {Array.from({ length: Math.min(6, Math.max(1, selectedRide.available_seats)) }, (_, i) => i + 1).map((num) => {
+                    const isDisabled = num > selectedRide.available_seats;
+                    const isSelected = requestedSeats === num;
+                    return (
+                      <button
+                        key={num}
+                        type="button"
+                        disabled={isDisabled}
+                        onClick={() => setRequestedSeats(num)}
+                        className={`flex-1 py-2 rounded-xl font-extrabold text-xs border transition cursor-pointer ${
+                          isSelected 
+                            ? 'bg-slate-900 text-white border-slate-900 shadow-sm ring-2 ring-emerald-500/50' 
+                            : isDisabled
+                            ? 'bg-slate-100 text-slate-300 border-slate-100 cursor-not-allowed'
+                            : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300 hover:bg-slate-50'
+                        }`}
+                      >
+                        {num} {num === 1 ? 'Seat' : 'Seats'}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -2275,10 +2314,14 @@ export default function CampusPoolApp() {
             </div>
 
             {/* Arithmetic Breakdown Card */}
-            <div className="bg-slate-900 text-white p-3.5 rounded-xl text-xs space-y-1.5 mb-4">
+            <div className="bg-slate-900 text-white p-3.5 rounded-xl text-xs space-y-1.5 mb-4 shadow-xs">
               <div className="flex justify-between text-slate-300">
-                <span>Base Rent:</span>
-                <span>{requestedSeats} seat(s) × ₹{unitPrice} = ₹{baseFare.toFixed(2)}</span>
+                <span>Seats Selected:</span>
+                <span className="font-bold text-white">{requestedSeats} seat{requestedSeats > 1 ? 's' : ''}</span>
+              </div>
+              <div className="flex justify-between text-slate-300">
+                <span>Base Rent ({requestedSeats} × ₹{unitPrice}):</span>
+                <span className="font-bold text-white">₹{baseFare.toFixed(2)}</span>
               </div>
               {applyStudentDiscount && (
                 <div className="flex justify-between text-emerald-400 font-semibold">

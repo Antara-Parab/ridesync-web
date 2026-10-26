@@ -20,8 +20,8 @@ export async function GET(req: NextRequest) {
         r.departure_time,
         r.cost_per_seat,
         b.seats_requested,
-        (b.seats_requested * r.cost_per_seat) AS total_fare,
-        ROUND((b.seats_requested * r.cost_per_seat * 0.90), 2) AS discounted_fare,
+        COALESCE(b.total_fare, (b.seats_requested * r.cost_per_seat)) AS total_fare,
+        COALESCE(b.discounted_fare, ROUND((b.seats_requested * r.cost_per_seat * 0.90), 2)) AS discounted_fare,
         b.booking_status,
         b.booked_at
       FROM Bookings b
@@ -82,6 +82,7 @@ export async function POST(req: NextRequest) {
     let rideSource = 'Chembur';
     let rideDestination = 'VESIT Campus';
     let rideDepartureTime = '08:15 AM';
+    let availableSeats = 3;
 
     const dbRide = await query<any[]>('SELECT r.*, COALESCE(u.username, u.full_name) as driver_name FROM Rides r JOIN Users u ON r.driver_id = u.user_id WHERE r.ride_id = ?', [rideId]);
     if (dbRide && dbRide.length > 0) {
@@ -90,6 +91,7 @@ export async function POST(req: NextRequest) {
       rideSource = dbRide[0].source || 'Chembur';
       rideDestination = dbRide[0].destination || 'VESIT Campus';
       rideDepartureTime = dbRide[0].departure_time || '08:15 AM';
+      availableSeats = Number(dbRide[0].available_seats) || 0;
     } else {
       const mockRide = mockDb.rides.find(r => r.ride_id === rideId);
       if (mockRide) {
@@ -98,7 +100,16 @@ export async function POST(req: NextRequest) {
         rideSource = mockRide.source || 'Chembur';
         rideDestination = mockRide.destination || 'VESIT Campus';
         rideDepartureTime = mockRide.departure_time || '08:15 AM';
+        availableSeats = Number(mockRide.available_seats) || 0;
       }
+    }
+
+    // Validation: Check available seats
+    if (seatsReq > availableSeats) {
+      return NextResponse.json({
+        success: false,
+        error: `Only ${availableSeats} seat(s) available on this ride! You requested ${seatsReq}.`,
+      }, { status: 400 });
     }
 
     // Validation: Driver cannot book their own ride
@@ -135,11 +146,11 @@ export async function POST(req: NextRequest) {
       }, { status: 400 });
     }
 
-    // Try MySQL insert
+    // Try MySQL insert with exact seat count, total fare, and discounted fare
     await query(
-      `INSERT INTO Bookings (ride_id, passenger_id, seats_requested, booking_status)
-       VALUES (?, ?, ?, 'PENDING')`,
-      [rideId, passengerId, seatsReq]
+      `INSERT INTO Bookings (ride_id, passenger_id, seats_requested, total_fare, discounted_fare, booking_status)
+       VALUES (?, ?, ?, ?, ?, 'PENDING')`,
+      [rideId, passengerId, seatsReq, baseFare, finalFare]
     );
 
     const newBooking: MockBooking = {
