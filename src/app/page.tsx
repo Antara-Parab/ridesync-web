@@ -7,7 +7,7 @@ import {
   ArrowRight, ShieldCheck, Tag, Sparkles, Phone,
   TrendingDown, CheckSquare, Square, LogIn, UserPlus,
   LogOut, User, Lock, ChevronRight, Zap, Trash2, Loader2,
-  Database, RefreshCw, Table, Layers
+  Database, RefreshCw, Table, Layers, Star, Flag
 } from 'lucide-react';
 
 interface Ride {
@@ -82,6 +82,12 @@ export default function CampusPoolApp() {
   const [passengerPhone, setPassengerPhone] = useState('9820445566');
   const [requestedSeats, setRequestedSeats] = useState(1);
   const [applyStudentDiscount, setApplyStudentDiscount] = useState(true);
+
+  // Rating Modal state (for Ratings table)
+  const [ratingModalBooking, setRatingModalBooking] = useState<Booking | null>(null);
+  const [ratingValue, setRatingValue] = useState<number>(5);
+  const [ratingReview, setRatingReview] = useState<string>('Great safe driving, reached campus on time!');
+  const [isSubmittingRating, setIsSubmittingRating] = useState(false);
 
   // Offer Ride Form state
   const [newRideForm, setNewRideForm] = useState<{
@@ -756,6 +762,59 @@ export default function CampusPoolApp() {
       }
     } catch {
       showToast('Network error while clearing bookings', 'error');
+    }
+  };
+
+  // Driver Completes Ride (Audits to Ride_Logs in TiDB)
+  const handleCompleteRide = async (rideId: number) => {
+    setActionLoadingId(rideId);
+    try {
+      const res = await fetch('/api/rides/complete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ride_id: rideId }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        showToast('🏁 Trip completed! Status audit saved to Ride_Logs table.', 'success');
+        fetchRides();
+        fetchBookings();
+      } else {
+        showToast(data.error || 'Failed to complete trip', 'error');
+      }
+    } catch {
+      showToast('Network error while completing ride', 'error');
+    } finally {
+      setActionLoadingId(null);
+    }
+  };
+
+  // Passenger Submits Rating (Inserts into Ratings in TiDB)
+  const handleSubmitRating = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!ratingModalBooking) return;
+    setIsSubmittingRating(true);
+    try {
+      const res = await fetch('/api/ratings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          booking_id: ratingModalBooking.booking_id,
+          rating_value: ratingValue,
+          review: ratingReview,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        showToast('⭐ Driver rated successfully! Record saved to Ratings table.', 'success');
+        setRatingModalBooking(null);
+      } else {
+        showToast(data.error || 'Failed to submit rating', 'error');
+      }
+    } catch {
+      showToast('Network error while submitting rating', 'error');
+    } finally {
+      setIsSubmittingRating(false);
     }
   };
 
@@ -1745,6 +1804,21 @@ export default function CampusPoolApp() {
                                 <p className="text-[11px] text-emerald-800 font-semibold bg-emerald-50 p-2 rounded-lg">
                                   🎉 Your seat is reserved! Pay ₹{b.discounted_fare} directly to {b.driver_name || 'driver'} via UPI or cash upon boarding.
                                 </p>
+                                <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between">
+                                  <span className="text-[11px] text-slate-500 font-medium">Arrived at campus?</span>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setRatingModalBooking(b);
+                                      setRatingValue(5);
+                                      setRatingReview('Great safe driving, reached campus on time!');
+                                    }}
+                                    className="px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs rounded-xl transition shadow-xs flex items-center space-x-1 cursor-pointer active:scale-95"
+                                  >
+                                    <Star className="w-3.5 h-3.5 fill-current text-slate-950" />
+                                    <span>Rate Driver (★)</span>
+                                  </button>
+                                </div>
                               </div>
                             ))}
                           </div>
@@ -1885,19 +1959,31 @@ export default function CampusPoolApp() {
                                     </div>
                                   </div>
                                 </div>
-                                <button
-                                  type="button"
-                                  disabled={actionLoadingId === r.ride_id}
-                                  onClick={() => handleDeleteRide(r.ride_id)}
-                                  className="w-full py-2 px-3 bg-rose-50 hover:bg-rose-100 disabled:opacity-50 text-rose-700 border border-rose-200 rounded-lg text-xs font-bold transition flex items-center justify-center space-x-1.5 cursor-pointer active:scale-95"
-                                >
-                                  {actionLoadingId === r.ride_id ? (
-                                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                                  ) : (
+                                <div className="flex gap-2">
+                                  <button
+                                    type="button"
+                                    disabled={actionLoadingId === r.ride_id}
+                                    onClick={() => handleCompleteRide(r.ride_id)}
+                                    className="flex-1 py-2 px-3 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white rounded-lg text-xs font-bold transition flex items-center justify-center space-x-1.5 cursor-pointer active:scale-95 shadow-xs"
+                                    title="Complete Ride and Audit to Ride_Logs"
+                                  >
+                                    {actionLoadingId === r.ride_id ? (
+                                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                    ) : (
+                                      <Flag className="w-3.5 h-3.5" />
+                                    )}
+                                    <span>Complete Trip</span>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    disabled={actionLoadingId === r.ride_id}
+                                    onClick={() => handleDeleteRide(r.ride_id)}
+                                    className="py-2 px-3 bg-rose-50 hover:bg-rose-100 disabled:opacity-50 text-rose-700 border border-rose-200 rounded-lg text-xs font-bold transition flex items-center justify-center space-x-1 cursor-pointer active:scale-95"
+                                    title="Delete this Offered Ride"
+                                  >
                                     <Trash2 className="w-3.5 h-3.5" />
-                                  )}
-                                  <span>Delete this Offered Ride</span>
-                                </button>
+                                  </button>
+                                </div>
                               </div>
                             ))}
                           </div>
@@ -1995,8 +2081,25 @@ export default function CampusPoolApp() {
                                       </button>
                                     </div>
                                   ) : (
-                                    <div className="text-center py-1 text-xs text-slate-500 font-medium">
-                                      {b.booking_status === 'ACCEPTED' ? '✅ You confirmed this booking' : '❌ You declined this request'}
+                                    <div className="space-y-2">
+                                      <div className="text-center py-1 text-xs text-slate-600 font-semibold bg-emerald-50 rounded-xl p-2 border border-emerald-100 flex items-center justify-center space-x-1.5">
+                                        <span>{b.booking_status === 'ACCEPTED' ? '✅ You confirmed this booking' : '❌ You declined this request'}</span>
+                                      </div>
+                                      {b.booking_status === 'ACCEPTED' && (
+                                        <button
+                                          type="button"
+                                          disabled={actionLoadingId === b.ride_id}
+                                          onClick={() => handleCompleteRide(b.ride_id)}
+                                          className="w-full py-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-bold text-xs rounded-xl transition shadow-xs cursor-pointer active:scale-95 flex items-center justify-center space-x-1.5"
+                                        >
+                                          {actionLoadingId === b.ride_id ? (
+                                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                          ) : (
+                                            <Flag className="w-3.5 h-3.5" />
+                                          )}
+                                          <span>🏁 Complete Trip (Audit to Ride_Logs)</span>
+                                        </button>
+                                      )}
                                     </div>
                                   )}
                                 </div>
@@ -2264,6 +2367,85 @@ export default function CampusPoolApp() {
                   </button>
                 </div>
               )}
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL 3: RATE DRIVER MODAL (INSERTS INTO RATINGS TABLE) */}
+      {/* ========================================================================= */}
+      {ratingModalBooking && (
+        <div className="fixed inset-0 bg-slate-950/40 backdrop-blur-xs flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl border border-slate-100">
+            <div className="flex justify-between items-start mb-4">
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+                  Post-Trip Feedback
+                </span>
+                <h3 className="text-base font-bold text-slate-900 mt-1">
+                  Rate Driver: {ratingModalBooking.driver_name || 'Student Driver'}
+                </h3>
+                <p className="text-xs text-slate-500">{ratingModalBooking.source} ➔ {ratingModalBooking.destination}</p>
+              </div>
+              <button 
+                type="button"
+                onClick={() => setRatingModalBooking(null)}
+                className="text-slate-400 hover:text-slate-600 p-1 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSubmitRating} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">Rating (1 to 5 Stars)</label>
+                <div className="flex items-center justify-center space-x-2 py-2 bg-slate-50 rounded-xl border border-slate-200">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <button
+                      key={star}
+                      type="button"
+                      onClick={() => setRatingValue(star)}
+                      className="p-1 cursor-pointer hover:scale-110 transition active:scale-95"
+                    >
+                      <Star 
+                        className={`w-7 h-7 ${star <= ratingValue ? 'text-amber-400 fill-amber-400' : 'text-slate-300'}`} 
+                      />
+                    </button>
+                  ))}
+                </div>
+                <div className="text-center text-xs font-extrabold text-slate-700 mt-1">
+                  {ratingValue === 5 ? '⭐⭐⭐⭐⭐ Excellent (5/5)' :
+                   ratingValue === 4 ? '⭐⭐⭐⭐ Good (4/5)' :
+                   ratingValue === 3 ? '⭐⭐⭐ Average (3/5)' :
+                   ratingValue === 2 ? '⭐⭐ Poor (2/5)' : '⭐ Very Poor (1/5)'}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Feedback / Review</label>
+                <textarea
+                  rows={3}
+                  required
+                  value={ratingReview}
+                  onChange={(e) => setRatingReview(e.target.value)}
+                  placeholder="e.g. Great safe driving, arrived on time at VESIT campus!"
+                  className="w-full bg-slate-50 border border-slate-200 px-3 py-2 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={isSubmittingRating}
+                className="w-full py-2.5 bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-slate-950 font-bold rounded-xl text-xs transition shadow-md cursor-pointer active:scale-95 flex items-center justify-center space-x-1.5"
+              >
+                {isSubmittingRating ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Check className="w-4 h-4" />
+                )}
+                <span>Submit Rating to TiDB Database</span>
+              </button>
             </form>
           </div>
         </div>
