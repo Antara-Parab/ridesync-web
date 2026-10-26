@@ -88,6 +88,7 @@ export default function CampusPoolApp() {
   const [ratingValue, setRatingValue] = useState<number>(5);
   const [ratingReview, setRatingReview] = useState<string>('Great safe driving, reached campus on time!');
   const [isSubmittingRating, setIsSubmittingRating] = useState(false);
+  const [userRatings, setUserRatings] = useState<Record<number, { rating_value: number; review?: string }>>({});
 
   // Offer Ride Form state
   const [newRideForm, setNewRideForm] = useState<{
@@ -333,6 +334,7 @@ export default function CampusPoolApp() {
     }
     fetchRides();
     fetchBookings();
+    fetchRatings();
   }, []);
 
   const fetchRides = async () => {
@@ -362,6 +364,27 @@ export default function CampusPoolApp() {
       }
     } catch {
       console.error('Failed to load bookings');
+    }
+  };
+
+  const fetchRatings = async () => {
+    try {
+      const res = await fetch('/api/ratings');
+      const data = await res.json();
+      if (data.success && Array.isArray(data.ratings)) {
+        const ratingMap: Record<number, { rating_value: number; review?: string }> = {};
+        data.ratings.forEach((r: any) => {
+          if (r.booking_id) {
+            ratingMap[Number(r.booking_id)] = {
+              rating_value: Number(r.rating_value) || 5,
+              review: r.review,
+            };
+          }
+        });
+        setUserRatings(ratingMap);
+      }
+    } catch {
+      console.error('Failed to load ratings');
     }
   };
 
@@ -807,7 +830,15 @@ export default function CampusPoolApp() {
       const data = await res.json();
       if (data.success) {
         showToast('⭐ Driver rated successfully! Record saved to Ratings table.', 'success');
+        setUserRatings(prev => ({
+          ...prev,
+          [ratingModalBooking.booking_id]: {
+            rating_value: ratingValue,
+            review: ratingReview,
+          },
+        }));
         setRatingModalBooking(null);
+        fetchRatings();
       } else {
         showToast(data.error || 'Failed to submit rating', 'error');
       }
@@ -1824,18 +1855,30 @@ export default function CampusPoolApp() {
                                 </p>
                                 <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between">
                                   <span className="text-[11px] text-slate-500 font-medium">Arrived at campus?</span>
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      setRatingModalBooking(b);
-                                      setRatingValue(5);
-                                      setRatingReview('Great safe driving, reached campus on time!');
-                                    }}
-                                    className="px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs rounded-xl transition shadow-xs flex items-center space-x-1 cursor-pointer active:scale-95"
-                                  >
-                                    <Star className="w-3.5 h-3.5 fill-current text-slate-950" />
-                                    <span>Rate Driver (★)</span>
-                                  </button>
+                                  {(() => {
+                                    const existingRating = userRatings[b.booking_id];
+                                    const isRated = Boolean(existingRating);
+
+                                    return (
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setRatingModalBooking(b);
+                                          setRatingValue(existingRating?.rating_value || 5);
+                                          setRatingReview(existingRating?.review || 'Great safe driving, reached campus on time!');
+                                        }}
+                                        className={`px-3 py-1.5 font-bold text-xs rounded-xl transition shadow-xs flex items-center space-x-1.5 cursor-pointer active:scale-95 ${
+                                          isRated
+                                            ? 'bg-slate-900 hover:bg-slate-800 text-white border border-slate-700'
+                                            : 'bg-amber-500 hover:bg-amber-400 text-slate-950'
+                                        }`}
+                                        title={isRated ? 'View / update your rating' : 'Rate this driver'}
+                                      >
+                                        <Star className={`w-3.5 h-3.5 fill-current ${isRated ? 'text-amber-400' : 'text-slate-950'}`} />
+                                        <span>{isRated ? `Rated (${existingRating.rating_value}★)` : 'Rate Driver (★)'}</span>
+                                      </button>
+                                    );
+                                  })()}
                                 </div>
                               </div>
                             ))}
