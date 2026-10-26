@@ -47,6 +47,7 @@ interface AuthUser {
 }
 
 export default function CampusPoolApp() {
+  // Application state
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
   const [authUsername, setAuthUsername] = useState('');
@@ -106,6 +107,7 @@ export default function CampusPoolApp() {
     cost_per_seat: 50,
   });
 
+  // Format vehicle number plate
   const formatVehicleNumber = (val: string): string => {
     const clean = val.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 10);
     if (!clean) return '';
@@ -157,6 +159,7 @@ export default function CampusPoolApp() {
     setNewRideForm(prev => ({ ...prev, vehicle_number: formatted }));
   };
 
+  // Format 24-hour departure time
   const format24HourTime = (val: string): string => {
     if (val.includes(':')) {
       const parts = val.split(':');
@@ -211,6 +214,7 @@ export default function CampusPoolApp() {
     setNewRideForm(prev => ({ ...prev, departure_time: formatted }));
   };
 
+  // Form input handlers
   const handleSeatsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
     if (val === '') {
@@ -267,6 +271,7 @@ export default function CampusPoolApp() {
     }
   };
 
+  // User presets
   const applyUserPreset = (username: string) => {
     const clean = username.trim().toLowerCase();
     if (clean === 'tanmay') {
@@ -294,6 +299,7 @@ export default function CampusPoolApp() {
     setTimeout(() => setToast(null), 5000);
   };
 
+  // Initial data load
   useEffect(() => {
     const savedUser = localStorage.getItem('campuspool_user');
     if (savedUser) {
@@ -315,6 +321,7 @@ export default function CampusPoolApp() {
     fetchRatings();
   }, []);
 
+  // Fetch available rides
   const fetchRides = async () => {
     try {
       let url = '/api/rides';
@@ -333,6 +340,7 @@ export default function CampusPoolApp() {
     }
   };
 
+  // Fetch bookings
   const fetchBookings = async () => {
     try {
       const res = await fetch('/api/bookings');
@@ -345,6 +353,7 @@ export default function CampusPoolApp() {
     }
   };
 
+  // Fetch ratings
   const fetchRatings = async () => {
     try {
       const res = await fetch('/api/ratings');
@@ -366,6 +375,7 @@ export default function CampusPoolApp() {
     }
   };
 
+  // Fetch live TiDB admin tables
   const fetchAdminTables = async () => {
     setAdminLoading(true);
     try {
@@ -385,12 +395,14 @@ export default function CampusPoolApp() {
     }
   };
 
+  // Initial data load
   useEffect(() => {
     if (currentUser?.username?.toLowerCase() === 'admin') {
       fetchAdminTables();
     }
   }, [currentUser]);
 
+  // Render admin table rows
   const renderTableData = (tableName: string, data: any[] | undefined) => {
     const rows = data || [];
     if (rows.length === 0) {
@@ -472,6 +484,7 @@ export default function CampusPoolApp() {
     );
   };
 
+  // User authentication
   const handleAuthSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!authUsername.trim() || !authPassword.trim()) {
@@ -512,6 +525,7 @@ export default function CampusPoolApp() {
     }
   };
 
+  // Logout handler
   const handleLogout = () => {
     setCurrentUser(null);
     localStorage.removeItem('campuspool_user');
@@ -532,6 +546,7 @@ export default function CampusPoolApp() {
     showToast('Logged out successfully', 'info');
   };
 
+  // Open booking modal
   const handleOpenBookingModal = (ride: Ride) => {
     if (!currentUser) {
       showToast('Please log in with your student account to book a seat!', 'info');
@@ -558,6 +573,7 @@ export default function CampusPoolApp() {
     setPassengerNameInput(currentUser.username);
   };
 
+  // Confirm booking request
   const handleConfirmBooking = async () => {
     if (!selectedRide) return;
 
@@ -606,6 +622,7 @@ export default function CampusPoolApp() {
     }
   };
 
+  // Offer a new carpool ride
   const handleOfferRide = async (e: React.FormEvent) => {
     e.preventDefault();
     const driverName = (currentUser ? currentUser.username : newRideForm.driver_name).trim().toLowerCase();
@@ -676,6 +693,7 @@ export default function CampusPoolApp() {
     }
   };
 
+  // Accept booking request
   const handleAcceptRequest = async (bookingId: number) => {
     setBookings(prev => prev.map(b => b.booking_id === bookingId ? { ...b, booking_status: 'ACCEPTED' } : b));
     setActionLoadingId(bookingId);
@@ -699,6 +717,7 @@ export default function CampusPoolApp() {
     }
   };
 
+  // Reject booking request
   const handleRejectRequest = async (bookingId: number) => {
     setBookings(prev => prev.map(b => b.booking_id === bookingId ? { ...b, booking_status: 'REJECTED' } : b));
     setActionLoadingId(bookingId);
@@ -721,6 +740,7 @@ export default function CampusPoolApp() {
     }
   };
 
+  // Delete offered ride
   const handleDeleteRide = async (rideId: number) => {
     if (!confirm('Are you sure you want to delete this offered carpool ride?')) return;
     
@@ -747,6 +767,7 @@ export default function CampusPoolApp() {
     }
   };
 
+  // Clear all bookings
   const handleClearAllBookings = async () => {
     try {
       const res = await fetch('/api/bookings', { method: 'DELETE' });
@@ -763,6 +784,7 @@ export default function CampusPoolApp() {
     }
   };
 
+  // Complete ride and record audit log
   const handleCompleteRide = async (rideId: number) => {
     setActionLoadingId(rideId);
     try {
@@ -786,6 +808,7 @@ export default function CampusPoolApp() {
     }
   };
 
+  // Submit driver rating
   const handleSubmitRating = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!ratingModalBooking) return;
@@ -822,6 +845,7 @@ export default function CampusPoolApp() {
     }
   };
 
+  // Ride price calculation
   const unitPrice = selectedRide ? Number(selectedRide.cost_per_seat) : 0;
   const baseFare = requestedSeats * unitPrice;
   const discountAmount = applyStudentDiscount ? baseFare * 0.10 : 0;
@@ -1112,6 +1136,7 @@ export default function CampusPoolApp() {
         ) : (
           <>
 
+            {/* Find Rides Tab */}
             {activeTab === 'find' && (
           <div className="space-y-6">
 
@@ -1394,6 +1419,7 @@ export default function CampusPoolApp() {
           </div>
         )}
 
+        {/* Offer Ride Tab */}
         {activeTab === 'offer' && (
           <div className="max-w-2xl mx-auto">
             {!currentUser ? (
@@ -1571,6 +1597,7 @@ export default function CampusPoolApp() {
           </div>
         )}
 
+        {/* My Rides & Bookings Tab */}
         {activeTab === 'bookings' && (
           <div className="space-y-5">
 
@@ -2123,6 +2150,7 @@ export default function CampusPoolApp() {
         )}
       </main>
 
+      {/* Booking Modal */}
       {selectedRide && (
         <div className="fixed inset-0 bg-slate-950/40 backdrop-blur-xs flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-100">
@@ -2288,6 +2316,7 @@ export default function CampusPoolApp() {
         </div>
       )}
 
+      {/* Auth Modal */}
       {showAuthModal && (
         <div className="fixed inset-0 bg-slate-950/40 backdrop-blur-xs flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl border border-slate-100">
@@ -2381,6 +2410,7 @@ export default function CampusPoolApp() {
         </div>
       )}
 
+      {/* Rating Modal */}
       {ratingModalBooking && (
         <div className="fixed inset-0 bg-slate-950/40 backdrop-blur-xs flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl border border-slate-100">

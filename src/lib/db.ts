@@ -47,6 +47,7 @@ export const mockDb = {
   bookings: [] as MockBooking[],
 };
 
+// Database connection pool
 export function getDbPool(): mysql.Pool | null {
   if (process.env.MYSQL_HOST) {
     if (!globalThis._mysqlPool) {
@@ -85,6 +86,7 @@ export function getDbPool(): mysql.Pool | null {
   return null;
 }
 
+// Query execution helper
 export async function query<T = any>(sql: string, params: any[] = []): Promise<T | null> {
   const p = getDbPool();
   if (!p) return null;

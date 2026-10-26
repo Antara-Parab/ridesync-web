@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { INITIALIZE_SCHEMA_SQL, SEED_DATA_SQL } from '@/lib/schema-sql';
 
+// Initialize schema and seed data
 export async function POST() {
   try {
     const ddlStatements = INITIALIZE_SCHEMA_SQL.split(';')

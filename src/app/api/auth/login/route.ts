@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 
+// User login
 export async function POST(req: NextRequest) {
   try {
     const { username, password } = await req.json();

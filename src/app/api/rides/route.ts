@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query, mockDb, MockRide } from '@/lib/db';
 
+// Fetch active rides
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
@@ -54,6 +55,7 @@ export async function GET(req: NextRequest) {
   }
 }
 
+// Create new ride offer
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
@@ -132,6 +134,7 @@ export async function POST(req: NextRequest) {
   }
 }
 
+// Delete ride
 export async function DELETE(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);

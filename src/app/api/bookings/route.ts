@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query, mockDb, MockBooking } from '@/lib/db';
 
+// Fetch bookings
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
@@ -48,6 +49,7 @@ export async function GET(req: NextRequest) {
   }
 }
 
+// Clear all bookings
 export async function DELETE() {
   try {
     await query('DELETE FROM Bookings');
@@ -59,6 +61,7 @@ export async function DELETE() {
   }
 }
 
+// Submit booking request
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
