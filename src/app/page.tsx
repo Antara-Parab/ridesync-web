@@ -2081,25 +2081,8 @@ export default function CampusPoolApp() {
                                       </button>
                                     </div>
                                   ) : (
-                                    <div className="space-y-2">
-                                      <div className="text-center py-1 text-xs text-slate-600 font-semibold bg-emerald-50 rounded-xl p-2 border border-emerald-100 flex items-center justify-center space-x-1.5">
-                                        <span>{b.booking_status === 'ACCEPTED' ? '✅ You confirmed this booking' : '❌ You declined this request'}</span>
-                                      </div>
-                                      {b.booking_status === 'ACCEPTED' && (
-                                        <button
-                                          type="button"
-                                          disabled={actionLoadingId === b.ride_id}
-                                          onClick={() => handleCompleteRide(b.ride_id)}
-                                          className="w-full py-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-bold text-xs rounded-xl transition shadow-xs cursor-pointer active:scale-95 flex items-center justify-center space-x-1.5"
-                                        >
-                                          {actionLoadingId === b.ride_id ? (
-                                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                                          ) : (
-                                            <Flag className="w-3.5 h-3.5" />
-                                          )}
-                                          <span>🏁 Complete Trip (Audit to Ride_Logs)</span>
-                                        </button>
-                                      )}
+                                    <div className="text-center py-2 text-xs text-slate-600 font-semibold bg-emerald-50 rounded-xl p-2 border border-emerald-100 flex items-center justify-center space-x-1.5">
+                                      <span>{b.booking_status === 'ACCEPTED' ? '✅ You confirmed this booking' : '❌ You declined this request'}</span>
                                     </div>
                                   )}
                                 </div>
