@@ -43,7 +43,7 @@ A real-world, deployment-ready college carpool web application for VESIT student
 
 1. Open [vercel.com](https://vercel.com) and log in with your GitHub account.
 2. Click **"Add New..."** ➔ **"Project"**.
-3. Import **`Antara-Parab/ridesync-dbms`**.
+3. Import **`Antara-Parab/ridesync-web`**.
 4. Click **Deploy**!
 *(The app features a zero-config resilient engine that runs immediately out-of-the-box on Vercel, and seamlessly binds to cloud MySQL if credentials are added).*
 
