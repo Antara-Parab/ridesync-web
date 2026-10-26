@@ -9,7 +9,6 @@ export async function POST(
   const bookingId = Number(id);
 
   try {
-    // 1. Try MySQL Database first
     const dbBookings = await query<any[]>(
       `SELECT b.*, r.available_seats, COALESCE(p.username, p.full_name) as passenger_name 
        FROM Bookings b 
@@ -31,7 +30,6 @@ export async function POST(
       await query("UPDATE Bookings SET booking_status = 'ACCEPTED' WHERE booking_id = ?", [bookingId]);
       await query("UPDATE Rides SET available_seats = available_seats - ? WHERE ride_id = ?", [b.seats_requested, b.ride_id]);
 
-      // Update mockDb if present
       const mockB = mockDb.bookings.find(mb => mb.booking_id === bookingId);
       if (mockB) {
         mockB.booking_status = 'ACCEPTED';
@@ -46,7 +44,6 @@ export async function POST(
       });
     }
 
-    // 2. Fallback to in-memory mockDb
     const booking = mockDb.bookings.find(b => b.booking_id === bookingId);
     if (!booking) {
       return NextResponse.json({ success: false, error: 'Booking request not found' }, { status: 404 });
@@ -64,7 +61,6 @@ export async function POST(
       }, { status: 400 });
     }
 
-    // Arithmetic seat decrement
     ride.available_seats -= booking.seats_requested;
     booking.booking_status = 'ACCEPTED';
 

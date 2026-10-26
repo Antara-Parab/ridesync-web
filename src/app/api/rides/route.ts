@@ -7,7 +7,6 @@ export async function GET(req: NextRequest) {
     const source = searchParams.get('source');
     const destination = searchParams.get('destination');
 
-    // 1. Try MySQL Database first
     const sqlRides = await query<any[]>(`
       SELECT 
         r.ride_id,
@@ -41,7 +40,6 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ success: true, rides: filtered, source: 'mysql' });
     }
 
-    // 2. Fallback to in-memory store
     let rides = (mockDb.rides || []).filter(r => r.status === 'ACTIVE' && r.available_seats > 0);
     if (source) {
       rides = rides.filter(r => r.source.toLowerCase().includes(source.toLowerCase()));
@@ -68,7 +66,6 @@ export async function POST(req: NextRequest) {
     const fare = cost_per_seat !== undefined && cost_per_seat !== '' ? Number(cost_per_seat) : 0;
     const seats = Number(available_seats) || 3;
 
-    // Resolve driver_id and vehicle_id from DB
     let driverId = 60003;
     let vehicleId = 60002;
     const cleanDriverName = driver_name.trim();
@@ -80,12 +77,10 @@ export async function POST(req: NextRequest) {
       driverId = uRows[0].user_id;
     }
 
-    // Resolve or insert vehicle for this plate
     const vPlateRows = await query<any[]>('SELECT vehicle_id FROM Vehicles WHERE vehicle_number = ?', [cleanPlate]);
     if (vPlateRows && vPlateRows.length > 0) {
       vehicleId = vPlateRows[0].vehicle_id;
     } else {
-      // Check if driver already has a vehicle record in Vehicles
       const vOwnerRows = await query<any[]>('SELECT vehicle_id FROM Vehicles WHERE owner_id = ?', [driverId]);
       if (vOwnerRows && vOwnerRows.length > 0) {
         vehicleId = vOwnerRows[0].vehicle_id;
@@ -101,7 +96,6 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Try MySQL insert if connected
     const dbRes: any = await query(
       `INSERT INTO Rides (driver_id, vehicle_id, source, destination, ride_date, departure_time, available_seats, cost_per_seat, status)
        VALUES (?, ?, ?, ?, CURDATE(), ?, ?, ?, 'ACTIVE')`,
@@ -110,7 +104,6 @@ export async function POST(req: NextRequest) {
 
     const newRideId = dbRes?.insertId || (mockDb.rides.length + 1);
 
-    // Save in memory store as well
     const newRide: MockRide = {
       ride_id: newRideId,
       driver_id: driverId,
@@ -150,17 +143,14 @@ export async function DELETE(req: NextRequest) {
 
     const idNum = Number(rideId);
 
-    // 1. Fetch vehicle_id associated with this ride
     const rRows = await query<any[]>('SELECT vehicle_id FROM Rides WHERE ride_id = ?', [idNum]);
     const vehicleId = rRows && rRows.length > 0 ? rRows[0].vehicle_id : null;
 
     if (vehicleId) {
-      // Check if any other ride is using this vehicle
       const otherRides = await query<any[]>('SELECT ride_id FROM Rides WHERE vehicle_id = ? AND ride_id != ? LIMIT 1', [vehicleId, idNum]);
       const canDeleteVehicle = !otherRides || otherRides.length === 0;
 
       if (canDeleteVehicle) {
-        // Deleting from Vehicles cascades to delete the ride and all its bookings in a single statement
         await query('DELETE FROM Vehicles WHERE vehicle_id = ?', [vehicleId]);
       } else {
         await query('DELETE FROM Bookings WHERE ride_id = ?; DELETE FROM Rides WHERE ride_id = ?', [idNum, idNum]);
@@ -169,7 +159,6 @@ export async function DELETE(req: NextRequest) {
       await query('DELETE FROM Bookings WHERE ride_id = ?; DELETE FROM Rides WHERE ride_id = ?', [idNum, idNum]);
     }
 
-    // 4. Remove from mockDb
     mockDb.rides = mockDb.rides.filter(r => r.ride_id !== idNum);
     mockDb.bookings = mockDb.bookings.filter(b => b.ride_id !== idNum);
 

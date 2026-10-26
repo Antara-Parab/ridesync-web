@@ -3,7 +3,6 @@ import mysql from 'mysql2/promise';
 let pool: mysql.Pool | null = null;
 let isDbAvailable: boolean | null = null;
 
-// Initial in-memory state as resilient fallback if cloud MySQL is not yet linked on Vercel
 export interface MockRide {
   ride_id: number;
   driver_id: number;
@@ -43,7 +42,6 @@ declare global {
   var _mysqlPool: mysql.Pool | undefined;
 }
 
-// In-memory store for instant zero-config Vercel deployment
 export const mockDb = {
   rides: [] as MockRide[],
   bookings: [] as MockBooking[],

@@ -6,7 +6,6 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const rideId = searchParams.get('ride_id');
 
-    // 1. Try MySQL Database
     const sqlBookings = await query<any[]>(`
       SELECT 
         b.booking_id,
@@ -39,7 +38,6 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ success: true, bookings: result, source: 'mysql' });
     }
 
-    // 2. Fallback to in-memory store
     let bookings = mockDb.bookings;
     if (rideId) {
       bookings = bookings.filter(b => b.ride_id === Number(rideId));
@@ -76,7 +74,6 @@ export async function POST(req: NextRequest) {
     const seatsReq = Number(seats_requested) || 1;
     const hasDiscount = Boolean(apply_student_discount);
 
-    // Find the target ride (check DB or mock)
     let driverName = 'Aarav Sharma';
     let unitPrice = 0;
     let rideSource = 'Chembur';
@@ -104,7 +101,6 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Validation: Check available seats
     if (seatsReq > availableSeats) {
       return NextResponse.json({
         success: false,
@@ -112,7 +108,6 @@ export async function POST(req: NextRequest) {
       }, { status: 400 });
     }
 
-    // Validation: Driver cannot book their own ride
     const cleanPassenger = (passenger_name || '').trim().toLowerCase();
     const cleanDriver = (driverName || '').trim().toLowerCase();
     if (cleanPassenger && cleanDriver && cleanPassenger === cleanDriver) {
@@ -122,19 +117,16 @@ export async function POST(req: NextRequest) {
       }, { status: 400 });
     }
 
-    // ARITHMETIC OPERATIONS
     const baseFare = Number((seatsReq * unitPrice).toFixed(2));
     const discountAmount = hasDiscount ? Number((baseFare * 0.10).toFixed(2)) : 0;
     const finalFare = Number((baseFare - discountAmount).toFixed(2));
 
-    // Try finding passenger ID from DB
     let passengerId = 4;
     const pRows = await query<any[]>('SELECT user_id FROM Users WHERE LOWER(username) = LOWER(?) OR LOWER(full_name) = LOWER(?)', [passenger_name, passenger_name]);
     if (pRows && pRows.length > 0) {
       passengerId = pRows[0].user_id;
     }
 
-    // Duplicate Check: Passenger cannot apply twice for the same ride if already PENDING or ACCEPTED
     const existingBooking = await query<any[]>(
       'SELECT booking_id FROM Bookings WHERE ride_id = ? AND passenger_id = ? AND booking_status IN ("PENDING", "ACCEPTED")',
       [rideId, passengerId]
@@ -146,7 +138,6 @@ export async function POST(req: NextRequest) {
       }, { status: 400 });
     }
 
-    // Try MySQL insert with exact seat count, total fare, and discounted fare
     await query(
       `INSERT INTO Bookings (ride_id, passenger_id, seats_requested, total_fare, discounted_fare, booking_status)
        VALUES (?, ?, ?, ?, ?, 'PENDING')`,

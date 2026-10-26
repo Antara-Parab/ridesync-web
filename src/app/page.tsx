@@ -47,7 +47,6 @@ interface AuthUser {
 }
 
 export default function CampusPoolApp() {
-  // Auth state
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
   const [authUsername, setAuthUsername] = useState('');
@@ -58,39 +57,33 @@ export default function CampusPoolApp() {
   const [isBookingSeat, setIsBookingSeat] = useState(false);
   const [actionLoadingId, setActionLoadingId] = useState<number | string | null>(null);
 
-  // Admin Live Tables state
   const [adminTables, setAdminTables] = useState<Record<string, any[]> | null>(null);
   const [adminLoading, setAdminLoading] = useState(false);
   const [adminActiveTable, setAdminActiveTable] = useState<string>('all');
   const [lastRefreshedAt, setLastRefreshedAt] = useState<string>('');
 
-  // App tabs: 'find' | 'offer' | 'bookings'
   const [activeTab, setActiveTab] = useState<'find' | 'offer' | 'bookings'>('find');
   const [myRidesSubTab, setMyRidesSubTab] = useState<'passenger' | 'driver'>('passenger');
   const [rides, setRides] = useState<Ride[]>([]);
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
 
-  // Search state
   const [searchSource, setSearchSource] = useState('');
   const [searchDest, setSearchDest] = useState('');
   const sourceInputRef = useRef<HTMLInputElement>(null);
 
-  // Booking Modal state
   const [selectedRide, setSelectedRide] = useState<Ride | null>(null);
   const [passengerNameInput, setPassengerNameInput] = useState('');
   const [passengerPhone, setPassengerPhone] = useState('9820445566');
   const [requestedSeats, setRequestedSeats] = useState(1);
   const [applyStudentDiscount, setApplyStudentDiscount] = useState(true);
 
-  // Rating Modal state (for Ratings table)
   const [ratingModalBooking, setRatingModalBooking] = useState<Booking | null>(null);
   const [ratingValue, setRatingValue] = useState<number>(5);
   const [ratingReview, setRatingReview] = useState<string>('Great safe driving, reached campus on time!');
   const [isSubmittingRating, setIsSubmittingRating] = useState(false);
   const [userRatings, setUserRatings] = useState<Record<number, { rating_value: number; review?: string }>>({});
 
-  // Offer Ride Form state
   const [newRideForm, setNewRideForm] = useState<{
     driver_name: string;
     driver_phone: string;
@@ -113,13 +106,11 @@ export default function CampusPoolApp() {
     cost_per_seat: 50,
   });
 
-  // Automatically format Indian Vehicle Number Plate: e.g. MH-01-AB-1234
   const formatVehicleNumber = (val: string): string => {
     const clean = val.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 10);
     if (!clean) return '';
 
     let res = '';
-    // Part 1: State code (up to 2 letters, e.g. MH, DL, KA)
     let i = 0;
     while (i < clean.length && i < 2 && /[A-Z]/.test(clean[i])) {
       res += clean[i];
@@ -128,7 +119,6 @@ export default function CampusPoolApp() {
     if (i >= clean.length) return res;
 
     res += '-';
-    // Part 2: RTO digits (up to 2 digits, e.g. 01, 02)
     let rtoCount = 0;
     while (i < clean.length && rtoCount < 2 && /[0-9]/.test(clean[i])) {
       res += clean[i];
@@ -138,7 +128,6 @@ export default function CampusPoolApp() {
     if (i >= clean.length) return res;
 
     res += '-';
-    // Part 3: Series letters (up to 2 letters, e.g. AB, TS, AP)
     let seriesCount = 0;
     while (i < clean.length && seriesCount < 2 && /[A-Z]/.test(clean[i])) {
       res += clean[i];
@@ -148,7 +137,6 @@ export default function CampusPoolApp() {
     if (i >= clean.length) return res;
 
     res += '-';
-    // Part 4: 4 digits (e.g. 1234)
     let numCount = 0;
     while (i < clean.length && numCount < 4 && /[0-9]/.test(clean[i])) {
       res += clean[i];
@@ -169,9 +157,7 @@ export default function CampusPoolApp() {
     setNewRideForm(prev => ({ ...prev, vehicle_number: formatted }));
   };
 
-  // Automatically format 24-hour clock time: e.g. 08:30, 14:15, 23:59
   const format24HourTime = (val: string): string => {
-    // If input already has a colon
     if (val.includes(':')) {
       const parts = val.split(':');
       let h = parts[0].replace(/[^0-9]/g, '').slice(0, 2);
@@ -190,7 +176,6 @@ export default function CampusPoolApp() {
       return h ? (m !== '' ? h + ':' + m : h + ':') : '';
     }
 
-    // Pure digits
     const digits = val.replace(/[^0-9]/g, '').slice(0, 4);
     if (!digits) return '';
 
@@ -205,7 +190,6 @@ export default function CampusPoolApp() {
       return String(hours).padStart(2, '0') + ':';
     }
 
-    // 3 or 4 digits
     const hours = Math.min(23, parseInt(digits.slice(0, 2), 10));
     const hStr = String(hours).padStart(2, '0');
     let m1 = parseInt(digits[2], 10);
@@ -227,7 +211,6 @@ export default function CampusPoolApp() {
     setNewRideForm(prev => ({ ...prev, departure_time: formatted }));
   };
 
-  // Seat change & blur handlers (Never allow 0 seats, auto-clear 0 on focus)
   const handleSeatsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
     if (val === '') {
@@ -237,7 +220,6 @@ export default function CampusPoolApp() {
     const num = parseInt(val, 10);
     if (!isNaN(num)) {
       if (num <= 0) {
-        // Do not allow 0 seats
         setNewRideForm(prev => ({ ...prev, available_seats: '' }));
       } else {
         setNewRideForm(prev => ({ ...prev, available_seats: Math.min(6, num) }));
@@ -259,7 +241,6 @@ export default function CampusPoolApp() {
     }
   };
 
-  // Rent change & blur handlers (Auto-clear 0 on focus, default 0 on blur if empty)
   const handleRentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
     if (val === '') {
@@ -286,7 +267,6 @@ export default function CampusPoolApp() {
     }
   };
 
-  // User Preset for Ride Offers (e.g. Tanmay: Honda Amaze, MH-04-KR-9798, Thane -> VESIT Campus, 07:30, 1 seat, ₹67)
   const applyUserPreset = (username: string) => {
     const clean = username.trim().toLowerCase();
     if (clean === 'tanmay') {
@@ -314,7 +294,6 @@ export default function CampusPoolApp() {
     setTimeout(() => setToast(null), 5000);
   };
 
-  // Check saved session & fetch initial data
   useEffect(() => {
     const savedUser = localStorage.getItem('campuspool_user');
     if (savedUser) {
@@ -329,7 +308,6 @@ export default function CampusPoolApp() {
         localStorage.removeItem('campuspool_user');
       }
     } else {
-      // Default to empty when logged out
       setPassengerNameInput('');
     }
     fetchRides();
@@ -388,7 +366,6 @@ export default function CampusPoolApp() {
     }
   };
 
-  // Fetch Live TiDB Tables for Admin
   const fetchAdminTables = async () => {
     setAdminLoading(true);
     try {
@@ -414,7 +391,6 @@ export default function CampusPoolApp() {
     }
   }, [currentUser]);
 
-  // Admin Live Tables Renderer
   const renderTableData = (tableName: string, data: any[] | undefined) => {
     const rows = data || [];
     if (rows.length === 0) {
@@ -448,12 +424,10 @@ export default function CampusPoolApp() {
                   const val = row[col];
                   let displayVal: React.ReactNode = String(val ?? 'NULL');
 
-                  // Format dates/timestamps
                   if (typeof val === 'string' && val.includes('T') && val.includes('Z')) {
                     displayVal = new Date(val).toLocaleString();
                   }
 
-                  // Status badge
                   if (col.toLowerCase().includes('status') && typeof val === 'string') {
                     const status = val.toUpperCase();
                     const colorClass = 
@@ -468,17 +442,14 @@ export default function CampusPoolApp() {
                     );
                   }
 
-                  // ID formatting
                   if (col.toLowerCase().endsWith('_id') && val != null) {
                     displayVal = <span className="font-mono text-slate-600 font-bold">#{val}</span>;
                   }
 
-                  // Fare / Cost formatting (Total Fare, Discounted Fare, Cost Per Seat)
                   if ((col.toLowerCase().includes('fare') || col.toLowerCase().includes('cost')) && val != null) {
                     displayVal = <span className="font-bold text-emerald-700">₹{Number(val).toFixed(2)}</span>;
                   }
 
-                  // Seats formatting
                   if (col.toLowerCase().includes('seats') && val != null) {
                     displayVal = <span className="font-bold text-slate-900">{val} seat{Number(val) === 1 ? '' : 's'}</span>;
                   }
@@ -501,7 +472,6 @@ export default function CampusPoolApp() {
     );
   };
 
-  // Regular Auth Form Submit
   const handleAuthSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!authUsername.trim() || !authPassword.trim()) {
@@ -562,7 +532,6 @@ export default function CampusPoolApp() {
     showToast('Logged out successfully', 'info');
   };
 
-  // Open Booking Modal for Any User
   const handleOpenBookingModal = (ride: Ride) => {
     if (!currentUser) {
       showToast('Please log in with your student account to book a seat!', 'info');
@@ -589,7 +558,6 @@ export default function CampusPoolApp() {
     setPassengerNameInput(currentUser.username);
   };
 
-  // Student Books a Seat
   const handleConfirmBooking = async () => {
     if (!selectedRide) return;
 
@@ -638,7 +606,6 @@ export default function CampusPoolApp() {
     }
   };
 
-  // Driver Offers a New Ride
   const handleOfferRide = async (e: React.FormEvent) => {
     e.preventDefault();
     const driverName = (currentUser ? currentUser.username : newRideForm.driver_name).trim().toLowerCase();
@@ -709,9 +676,7 @@ export default function CampusPoolApp() {
     }
   };
 
-  // Driver Accepts Booking Request (Optimistic UI for Instant Click)
   const handleAcceptRequest = async (bookingId: number) => {
-    // Instant optimistic update
     setBookings(prev => prev.map(b => b.booking_id === bookingId ? { ...b, booking_status: 'ACCEPTED' } : b));
     setActionLoadingId(bookingId);
 
@@ -734,9 +699,7 @@ export default function CampusPoolApp() {
     }
   };
 
-  // Driver Declines Booking Request (Optimistic UI for Instant Click)
   const handleRejectRequest = async (bookingId: number) => {
-    // Instant optimistic update
     setBookings(prev => prev.map(b => b.booking_id === bookingId ? { ...b, booking_status: 'REJECTED' } : b));
     setActionLoadingId(bookingId);
 
@@ -758,11 +721,9 @@ export default function CampusPoolApp() {
     }
   };
 
-  // Driver Deletes an Offered Ride (Optimistic UI for Instant Click)
   const handleDeleteRide = async (rideId: number) => {
     if (!confirm('Are you sure you want to delete this offered carpool ride?')) return;
     
-    // Instant optimistic removal from UI
     const previousRides = [...rides];
     setRides(prev => prev.filter(r => r.ride_id !== rideId));
     setActionLoadingId(rideId);
@@ -786,7 +747,6 @@ export default function CampusPoolApp() {
     }
   };
 
-  // Clear All Bookings (Admin / Demo Reset)
   const handleClearAllBookings = async () => {
     try {
       const res = await fetch('/api/bookings', { method: 'DELETE' });
@@ -803,7 +763,6 @@ export default function CampusPoolApp() {
     }
   };
 
-  // Driver Completes Ride (Audits to Ride_Logs in TiDB)
   const handleCompleteRide = async (rideId: number) => {
     setActionLoadingId(rideId);
     try {
@@ -827,7 +786,6 @@ export default function CampusPoolApp() {
     }
   };
 
-  // Passenger Submits Rating (Inserts into Ratings in TiDB)
   const handleSubmitRating = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!ratingModalBooking) return;
@@ -864,7 +822,6 @@ export default function CampusPoolApp() {
     }
   };
 
-  // Arithmetic Calculation for Selected Ride
   const unitPrice = selectedRide ? Number(selectedRide.cost_per_seat) : 0;
   const baseFare = requestedSeats * unitPrice;
   const discountAmount = applyStudentDiscount ? baseFare * 0.10 : 0;
@@ -872,7 +829,7 @@ export default function CampusPoolApp() {
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans">
-      {/* Toast Notification */}
+
       {toast && (
         <div className="fixed bottom-5 right-5 z-50 max-w-sm animate-bounce-short">
           <div className={`p-4 rounded-xl shadow-xl border flex items-start space-x-3 ${
@@ -888,10 +845,9 @@ export default function CampusPoolApp() {
         </div>
       )}
 
-      {/* Main Top Header */}
       <header className="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-xs">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-3 flex justify-between items-center">
-          {/* Logo */}
+
           <div 
             onClick={() => setActiveTab('find')} 
             className="flex items-center space-x-3 cursor-pointer group"
@@ -907,7 +863,6 @@ export default function CampusPoolApp() {
             </div>
           </div>
 
-          {/* Navigation Bar (Always Clickable) */}
           <div className="flex items-center space-x-2 sm:space-x-3">
             {currentUser?.username?.toLowerCase() === 'admin' ? (
               <div className="flex items-center space-x-2">
@@ -970,7 +925,6 @@ export default function CampusPoolApp() {
               </nav>
             )}
 
-            {/* User Profile / Login */}
             {currentUser ? (
               <div className="flex items-center space-x-2">
                 <div className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-bold ${
@@ -1019,14 +973,13 @@ export default function CampusPoolApp() {
         </div>
       </header>
 
-      {/* Main Content Area */}
       <main className="max-w-6xl w-full mx-auto px-4 sm:px-6 py-6 flex-1 space-y-6">
         {currentUser?.username?.toLowerCase() === 'admin' ? (
-          /* ========================================================================= */
-          /* ADMIN DASHBOARD: LIVE TIDB DATABASE TABLES */
-          /* ========================================================================= */
+          
+          
+          
           <div className="space-y-6">
-            {/* Admin Header Banner */}
+
             <div className="bg-gradient-to-r from-slate-900 via-purple-950 to-slate-900 text-white rounded-2xl p-6 sm:p-7 shadow-xl border border-purple-500/20 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
               <div>
                 <div className="flex items-center space-x-2 mb-2">
@@ -1069,7 +1022,6 @@ export default function CampusPoolApp() {
               </div>
             </div>
 
-            {/* Table Tabs / Switcher */}
             {(() => {
               const tableNames = ['Users', 'Vehicles', 'Rides', 'Bookings', 'Ratings', 'Ride_Logs'];
               const displayedTables = adminActiveTable === 'all' 
@@ -1117,7 +1069,6 @@ export default function CampusPoolApp() {
                     })}
                   </div>
 
-                  {/* Tables Display */}
                   {adminLoading && !adminTables ? (
                     <div className="text-center py-16 bg-white rounded-2xl border border-slate-200 p-8 shadow-xs">
                       <RefreshCw className="w-8 h-8 text-purple-600 animate-spin mx-auto mb-3" />
@@ -1160,12 +1111,10 @@ export default function CampusPoolApp() {
           </div>
         ) : (
           <>
-            {/* ========================================================================= */}
-            {/* TAB 1: FIND RIDES (PASSENGER) */}
-            {/* ========================================================================= */}
+
             {activeTab === 'find' && (
           <div className="space-y-6">
-            {/* Hero / Route Search Banner */}
+
             <div className="bg-gradient-to-r from-emerald-800 to-teal-700 rounded-2xl p-6 sm:p-8 text-white shadow-lg relative overflow-hidden">
               <div className="relative z-10 max-w-2xl">
                 <span className="inline-flex items-center space-x-1 bg-emerald-700/60 text-emerald-200 text-xs px-2.5 py-1 rounded-full font-semibold mb-3">
@@ -1179,7 +1128,6 @@ export default function CampusPoolApp() {
                   Skip the crowded local train and auto queues. Travel comfortably with college peers and get 10% off with your student ID!
                 </p>
 
-                {/* 3 Clickable Feature Cards */}
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 mb-5">
                   <button 
                     type="button"
@@ -1219,7 +1167,6 @@ export default function CampusPoolApp() {
                   </button>
                 </div>
 
-                {/* Search Bar */}
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 bg-white/10 backdrop-blur-md p-2.5 rounded-xl border border-white/20">
                   <div>
                     <label className="block text-[10px] font-bold text-emerald-200 uppercase mb-1">Pick-up Location</label>
@@ -1273,7 +1220,6 @@ export default function CampusPoolApp() {
               </div>
             </div>
 
-            {/* Ride Cards List */}
             <div>
               <div className="flex justify-between items-center mb-4">
                 <h2 className="text-base font-bold text-slate-900 flex items-center space-x-2">
@@ -1312,7 +1258,7 @@ export default function CampusPoolApp() {
                       className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs hover:shadow-md transition flex flex-col justify-between"
                     >
                       <div>
-                        {/* Route Title */}
+
                         <div className="flex items-start justify-between mb-3">
                           <div className="flex items-center space-x-1.5 font-bold text-slate-900 text-sm">
                             <span>{ride.source}</span>
@@ -1328,7 +1274,6 @@ export default function CampusPoolApp() {
                           </span>
                         </div>
 
-                        {/* Driver & Car Details */}
                         <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 text-xs text-slate-600 space-y-1.5 mb-4">
                           <div className="flex justify-between items-center">
                             <span className="text-slate-400">Driver:</span>
@@ -1350,7 +1295,6 @@ export default function CampusPoolApp() {
                           </div>
                         </div>
 
-                        {/* Pricing and Discount */}
                         <div className="flex items-baseline justify-between mb-4">
                           <div>
                             <span className="text-lg font-black text-slate-900">₹{ride.cost_per_seat}</span>
@@ -1365,7 +1309,6 @@ export default function CampusPoolApp() {
                         </div>
                       </div>
 
-                      {/* Clickable Book Button OR Driver Own-Ride Indicator OR Passenger Booking Status */}
                       {(() => {
                         const isDriver = currentUser && ride.driver_name?.toLowerCase() === currentUser.username.toLowerCase();
                         if (isDriver) {
@@ -1393,7 +1336,6 @@ export default function CampusPoolApp() {
                           );
                         }
 
-                        // Check if current logged in user already applied or booked this ride
                         const currentName = (currentUser?.username || '').toLowerCase();
                         const userBooking = currentUser
                           ? bookings.find(b => b.ride_id === ride.ride_id && (b.passenger_name || '').toLowerCase() === currentName && (b.booking_status === 'PENDING' || b.booking_status === 'ACCEPTED'))
@@ -1452,9 +1394,6 @@ export default function CampusPoolApp() {
           </div>
         )}
 
-        {/* ========================================================================= */}
-        {/* TAB 2: OFFER A RIDE (DRIVER) */}
-        {/* ========================================================================= */}
         {activeTab === 'offer' && (
           <div className="max-w-2xl mx-auto">
             {!currentUser ? (
@@ -1632,12 +1571,9 @@ export default function CampusPoolApp() {
           </div>
         )}
 
-        {/* ========================================================================= */}
-        {/* TAB 3: MY RIDES & APPROVALS (CLEAN CARD-BASED DESIGN) */}
-        {/* ========================================================================= */}
         {activeTab === 'bookings' && (
           <div className="space-y-5">
-            {/* Clean Sub-tab Navigation */}
+
             {(() => {
               const currentName = (currentUser?.username || '').toLowerCase();
               const myBookingsCount = currentUser
@@ -1707,7 +1643,6 @@ export default function CampusPoolApp() {
               );
             })()}
 
-            {/* 1. PASSENGER VIEW (TRIPS I BOOKED - SPLIT INTO PENDING & CONFIRMED) */}
             {myRidesSubTab === 'passenger' && (() => {
               const currentName = (currentUser?.username || '').toLowerCase();
               if (!currentUser) {
@@ -1730,7 +1665,6 @@ export default function CampusPoolApp() {
                 );
               }
 
-              // Filter to current user's booked trips safely
               const userTrips = bookings.filter(b => (b.passenger_name || '').toLowerCase() === currentName);
 
               const pendingTrips = userTrips.filter(b => b.booking_status === 'PENDING');
@@ -1754,7 +1688,7 @@ export default function CampusPoolApp() {
                     </div>
                   ) : (
                     <>
-                      {/* SECTION 1: APPROVAL PENDING */}
+
                       <div>
                         <div className="flex items-center space-x-2 mb-3">
                           <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse" />
@@ -1819,7 +1753,6 @@ export default function CampusPoolApp() {
                         )}
                       </div>
 
-                      {/* SECTION 2: BOOKED & CONFIRMED */}
                       <div>
                         <div className="flex items-center space-x-2 mb-3">
                           <CheckCircle className="w-4 h-4 text-emerald-600" />
@@ -1911,7 +1844,6 @@ export default function CampusPoolApp() {
                         )}
                       </div>
 
-                      {/* SECTION 3: DECLINED (IF ANY) */}
                       {declinedTrips.length > 0 && (
                         <div>
                           <h4 className="text-sm font-bold text-slate-700 mb-2">
@@ -1936,7 +1868,6 @@ export default function CampusPoolApp() {
               );
             })()}
 
-            {/* 2. DRIVER VIEW */}
             {myRidesSubTab === 'driver' && (() => {
               const currentName = (currentUser?.username || '').toLowerCase();
               const myOfferedRides = currentUser
@@ -1983,7 +1914,7 @@ export default function CampusPoolApp() {
                     </div>
                   ) : (
                     <>
-                      {/* SECTION 1: Active Rides Offered by Driver */}
+
                       <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs">
                         <div className="flex items-center justify-between mb-4">
                           <div className="flex items-center space-x-2">
@@ -2076,7 +2007,6 @@ export default function CampusPoolApp() {
                         )}
                       </div>
 
-                      {/* SECTION 2: Passenger Booking Requests */}
                       <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs">
                         <div className="flex items-center justify-between mb-4">
                           <div className="flex items-center space-x-2">
@@ -2193,9 +2123,6 @@ export default function CampusPoolApp() {
         )}
       </main>
 
-      {/* ========================================================================= */}
-      {/* MODAL 1: BOOKING MODAL (OPENS FOR ANYONE CLICKING "APPLY FOR SEAT") */}
-      {/* ========================================================================= */}
       {selectedRide && (
         <div className="fixed inset-0 bg-slate-950/40 backdrop-blur-xs flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-100">
@@ -2291,7 +2218,6 @@ export default function CampusPoolApp() {
                 </div>
               </div>
 
-              {/* Student Subsidy Discount Toggle */}
               <div 
                 onClick={() => setApplyStudentDiscount(!applyStudentDiscount)}
                 className="flex items-center justify-between p-3 rounded-xl bg-emerald-50/70 border border-emerald-200 cursor-pointer select-none transition hover:bg-emerald-50"
@@ -2313,7 +2239,6 @@ export default function CampusPoolApp() {
               </div>
             </div>
 
-            {/* Arithmetic Breakdown Card */}
             <div className="bg-slate-900 text-white p-3.5 rounded-xl text-xs space-y-1.5 mb-4 shadow-xs">
               <div className="flex justify-between text-slate-300">
                 <span>Seats Selected:</span>
@@ -2363,9 +2288,6 @@ export default function CampusPoolApp() {
         </div>
       )}
 
-      {/* ========================================================================= */}
-      {/* MODAL 2: AUTH MODAL (LOGIN / SIGN UP) */}
-      {/* ========================================================================= */}
       {showAuthModal && (
         <div className="fixed inset-0 bg-slate-950/40 backdrop-blur-xs flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl border border-slate-100">
@@ -2459,9 +2381,6 @@ export default function CampusPoolApp() {
         </div>
       )}
 
-      {/* ========================================================================= */}
-      {/* MODAL 3: RATE DRIVER MODAL (INSERTS INTO RATINGS TABLE) */}
-      {/* ========================================================================= */}
       {ratingModalBooking && (
         <div className="fixed inset-0 bg-slate-950/40 backdrop-blur-xs flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl border border-slate-100">
@@ -2538,7 +2457,6 @@ export default function CampusPoolApp() {
         </div>
       )}
 
-      {/* Footer */}
       <footer className="bg-white border-t border-slate-200 py-4 mt-auto">
         <div className="max-w-6xl mx-auto px-4 text-center text-xs text-slate-400 flex flex-col sm:flex-row justify-between items-center gap-2">
           <span>CampusPool — VESIT College Carpool Matching System</span>

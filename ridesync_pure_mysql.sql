@@ -1,20 +1,9 @@
--- ============================================================================
--- PROJECT: RideSync — College Carpool Matching System
--- SPECIFICATION: Shared Master Project Specification (2026-27)
--- TARGET: MySQL Server 8.0+ / MySQL Workbench
--- ============================================================================
-
 DROP DATABASE IF EXISTS ridesync_db;
 CREATE DATABASE ridesync_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 USE ridesync_db;
 
 SET GLOBAL log_bin_trust_function_creators = 1;
 
--- ============================================================================
--- 1. TABLE CREATION (DDL)
--- ============================================================================
-
--- Table 1: Users (Students & Drivers)
 CREATE TABLE Users (
     user_id INT AUTO_INCREMENT PRIMARY KEY,
     full_name VARCHAR(100) NOT NULL,
@@ -24,7 +13,6 @@ CREATE TABLE Users (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
 
--- Table 2: Vehicles (Vehicle details registered by students)
 CREATE TABLE Vehicles (
     vehicle_id INT AUTO_INCREMENT PRIMARY KEY,
     owner_id INT NOT NULL,
@@ -37,7 +25,6 @@ CREATE TABLE Vehicles (
     CONSTRAINT chk_vehicle_capacity CHECK (capacity > 0)
 ) ENGINE=InnoDB;
 
--- Table 3: Rides (Rides offered by student drivers)
 CREATE TABLE Rides (
     ride_id INT AUTO_INCREMENT PRIMARY KEY,
     driver_id INT NOT NULL,
@@ -58,7 +45,6 @@ CREATE TABLE Rides (
     CONSTRAINT chk_cost_per_seat CHECK (cost_per_seat >= 0)
 ) ENGINE=InnoDB;
 
--- Table 4: Bookings (Passenger ride requests & decisions)
 CREATE TABLE Bookings (
     booking_id INT AUTO_INCREMENT PRIMARY KEY,
     ride_id INT NOT NULL,
@@ -75,7 +61,6 @@ CREATE TABLE Bookings (
     CONSTRAINT chk_seats_requested CHECK (seats_requested > 0)
 ) ENGINE=InnoDB;
 
--- Table 5: Ratings (Post-ride feedback and driver ratings)
 CREATE TABLE Ratings (
     rating_id INT AUTO_INCREMENT PRIMARY KEY,
     booking_id INT NOT NULL,
@@ -87,7 +72,6 @@ CREATE TABLE Ratings (
     CONSTRAINT chk_rating_range CHECK (rating_value BETWEEN 1 AND 5)
 ) ENGINE=InnoDB;
 
--- Table 6: Ride_Logs (Audit trail for status tracking and trigger demonstration)
 CREATE TABLE Ride_Logs (
     log_id INT AUTO_INCREMENT PRIMARY KEY,
     ride_id INT NOT NULL,
@@ -96,18 +80,9 @@ CREATE TABLE Ride_Logs (
     changed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
 
--- ============================================================================
--- 2. INDEXING (Query Performance Optimization)
--- ============================================================================
-
 CREATE INDEX idx_rides_search ON Rides(source, destination, ride_date, status);
 CREATE INDEX idx_bookings_status ON Bookings(ride_id, booking_status);
 
--- ============================================================================
--- 3. VIEWS (Abstraction & Reporting)
--- ============================================================================
-
--- View 1: Active Rides Available for Booking (Section 6.1 / 8 in spec)
 CREATE OR REPLACE VIEW vw_AvailableActiveRides AS
 SELECT 
     r.ride_id,
@@ -127,7 +102,6 @@ JOIN Users u ON r.driver_id = u.user_id
 JOIN Vehicles v ON r.vehicle_id = v.vehicle_id
 WHERE r.status = 'ACTIVE' AND r.available_seats > 0;
 
--- View 2: Driver Performance Analytics
 CREATE OR REPLACE VIEW vw_DriverAnalytics AS
 SELECT 
     u.user_id AS driver_id,
@@ -139,13 +113,8 @@ FROM Users u
 LEFT JOIN Rides r ON u.user_id = r.driver_id
 GROUP BY u.user_id, u.full_name;
 
--- ============================================================================
--- 4. TRIGGERS (Enforcing Business Rules & Auditing)
--- ============================================================================
-
 DELIMITER $$
 
--- Trigger 1: Prevent Driver from Booking Their Own Ride (Section 6.4: No Self-Booking)
 DROP TRIGGER IF EXISTS trg_prevent_self_booking$$
 CREATE TRIGGER trg_prevent_self_booking
 BEFORE INSERT ON Bookings
@@ -159,7 +128,6 @@ BEGIN
     END IF;
 END$$
 
--- Trigger 2: Audit Ride Status Changes into Ride_Logs
 DROP TRIGGER IF EXISTS trg_ride_status_audit$$
 CREATE TRIGGER trg_ride_status_audit
 AFTER UPDATE ON Rides
@@ -171,11 +139,6 @@ BEGIN
     END IF;
 END$$
 
--- ============================================================================
--- 5. STORED FUNCTION (Business Logic & Calculations)
--- ============================================================================
-
--- Function: Calculate Total Ride Cost with Optional 10% College Student Subsidy
 DROP FUNCTION IF EXISTS fn_CalculateFareWithDiscount$$
 CREATE FUNCTION fn_CalculateFareWithDiscount(
     p_cost_per_seat DECIMAL(8,2),
@@ -188,16 +151,11 @@ BEGIN
     DECLARE v_total DECIMAL(8,2);
     SET v_total = p_cost_per_seat * p_seats;
     IF p_is_college_student THEN
-        SET v_total = v_total * 0.90; -- 10% student discount
+        SET v_total = v_total * 0.90;
     END IF;
     RETURN ROUND(v_total, 2);
 END$$
 
--- ============================================================================
--- 6. STORED PROCEDURES (ACID Concurrency & Driver Reports)
--- ============================================================================
-
--- Procedure 1: Accept Booking with Overbooking Prevention (Section 7.2 & Testing T07/T08)
 DROP PROCEDURE IF EXISTS sp_AcceptBooking$$
 CREATE PROCEDURE sp_AcceptBooking(
     IN p_booking_id INT,
@@ -209,7 +167,6 @@ proc_label: BEGIN
     DECLARE v_avail_seats INT;
     DECLARE v_current_status VARCHAR(20);
 
-    -- Declare error handler to rollback on error
     DECLARE EXIT HANDLER FOR SQLEXCEPTION
     BEGIN
         ROLLBACK;
@@ -218,7 +175,6 @@ proc_label: BEGIN
 
     START TRANSACTION;
 
-    -- Fetch booking details
     SELECT ride_id, seats_requested, booking_status 
     INTO v_ride_id, v_seats_req, v_current_status
     FROM Bookings 
@@ -236,15 +192,12 @@ proc_label: BEGIN
         LEAVE proc_label;
     END IF;
 
-    -- Lock the ride row to prevent race conditions / overbooking
     SELECT available_seats INTO v_avail_seats
     FROM Rides
     WHERE ride_id = v_ride_id
     FOR UPDATE;
 
-    -- Check if enough seats remain
     IF v_avail_seats >= v_seats_req THEN
-        -- Accept booking and deduct seats
         UPDATE Bookings 
         SET booking_status = 'ACCEPTED' 
         WHERE booking_id = p_booking_id;
@@ -256,13 +209,11 @@ proc_label: BEGIN
         COMMIT;
         SET p_status_msg = CONCAT('SUCCESS: Booking accepted! ', v_seats_req, ' seat(s) confirmed.');
     ELSE
-        -- Reject overbooking and rollback
         ROLLBACK;
         SET p_status_msg = CONCAT('FAILED: Insufficient seats! Requested: ', v_seats_req, ', Available: ', v_avail_seats);
     END IF;
 END$$
 
--- Procedure 2: Driver Ride Manifest Report using CURSOR (Module 5 Cursor demo)
 DROP PROCEDURE IF EXISTS sp_DriverRideReport$$
 CREATE PROCEDURE sp_DriverRideReport(
     IN p_driver_id INT
@@ -275,7 +226,6 @@ BEGIN
     DECLARE v_seats INT;
     DECLARE v_fare DECIMAL(8,2);
 
-    -- Cursor declaration
     DECLARE cur_rides CURSOR FOR 
         SELECT ride_id, source, destination, available_seats, cost_per_seat 
         FROM Rides 
@@ -283,7 +233,6 @@ BEGIN
 
     DECLARE CONTINUE HANDLER FOR NOT FOUND SET done = TRUE;
 
-    -- Create temporary table for manifest results
     DROP TEMPORARY TABLE IF EXISTS temp_manifest;
     CREATE TEMPORARY TABLE temp_manifest (
         ride_id INT,
@@ -304,18 +253,12 @@ BEGIN
 
     CLOSE cur_rides;
 
-    -- Return cursor-populated report
     SELECT * FROM temp_manifest;
     DROP TEMPORARY TABLE IF EXISTS temp_manifest;
 END$$
 
 DELIMITER ;
 
--- ============================================================================
--- 7. SEED DATA (Realistic College Scenario)
--- ============================================================================
-
--- Users: Students & Faculty
 INSERT INTO Users (user_id, full_name, email, password_hash, phone) VALUES
 (1, 'Aarav Sharma',   'aarav.sharma@ves.ac.in',   'hash_aarav_99',   '9820112233'),
 (2, 'Priya Patel',    'priya.patel@ves.ac.in',    'hash_priya_88',   '9820223344'),
@@ -326,15 +269,12 @@ INSERT INTO Users (user_id, full_name, email, password_hash, phone) VALUES
 (7, 'Devansh Joshi',  'devansh.joshi@ves.ac.in',  'hash_devansh_33', '9820778899'),
 (8, 'Isha Deshmukh',  'isha.deshmukh@ves.ac.in',  'hash_isha_22',    '9820889900');
 
--- Vehicles: Registered with owners
 INSERT INTO Vehicles (vehicle_id, owner_id, vehicle_number, model, capacity) VALUES
 (1, 1, 'MH-01-AB-1234', 'Hyundai i20',      4),
 (2, 2, 'MH-02-CD-5678', 'Honda City',       4),
 (3, 3, 'MH-03-EF-9012', 'Maruti Baleno',    3),
 (4, 5, 'MH-04-GH-3456', 'Tata Nexon EV',    4);
 
--- Rides: Active and Completed routes to College Campus
--- Note: Ride #1 has available_seats = 1 intentionally for testing overbooking prevention
 INSERT INTO Rides (ride_id, driver_id, vehicle_id, source, destination, ride_date, departure_time, available_seats, cost_per_seat, status) VALUES
 (1, 1, 1, 'Chembur',   'VESIT Campus', '2026-10-26', '08:15:00', 1, 40.00,  'ACTIVE'),
 (2, 2, 2, 'Thane',     'VESIT Campus', '2026-10-26', '07:45:00', 3, 75.00,  'ACTIVE'),
@@ -342,23 +282,19 @@ INSERT INTO Rides (ride_id, driver_id, vehicle_id, source, destination, ride_dat
 (4, 5, 4, 'Vashi',     'VESIT Campus', '2026-10-26', '08:00:00', 4, 60.00,  'ACTIVE'),
 (5, 1, 1, 'Ghatkopar', 'VESIT Campus', '2026-10-25', '08:30:00', 0, 35.00,  'COMPLETED');
 
--- Bookings: Requests & Confirmed Rides
 INSERT INTO Bookings (booking_id, ride_id, passenger_id, seats_requested, booking_status, booked_at) VALUES
 (1, 1, 4, 1, 'PENDING',  '2026-10-25 18:00:00'),
-(2, 1, 6, 2, 'PENDING',  '2026-10-25 18:30:00'), -- Will fail due to insufficient seats (T08 overbooking demo)
+(2, 1, 6, 2, 'PENDING',  '2026-10-25 18:30:00'),
 (3, 2, 7, 1, 'ACCEPTED', '2026-10-25 19:00:00'),
 (4, 3, 8, 1, 'ACCEPTED', '2026-10-25 19:30:00'),
 (5, 5, 4, 1, 'ACCEPTED', '2026-10-24 20:00:00');
 
--- Ratings: Post-ride feedback
 INSERT INTO Ratings (rating_id, booking_id, rating_value, review) VALUES
 (1, 5, 5, 'Punctual driver, smooth ride to morning lecture!');
 
--- Ride Logs: Initial log entry for completed ride
 INSERT INTO Ride_Logs (ride_id, old_status, new_status, changed_at) VALUES
 (5, 'ACTIVE', 'COMPLETED', '2026-10-25 09:30:00');
 
--- DCL Security setup
 DROP USER IF EXISTS 'ridesync_operator'@'localhost';
 CREATE USER 'ridesync_operator'@'localhost' IDENTIFIED BY 'Operator@123';
 GRANT SELECT ON ridesync_db.Bookings TO 'ridesync_operator'@'localhost';

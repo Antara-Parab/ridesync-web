@@ -13,7 +13,6 @@ export async function POST(req: NextRequest) {
     const stars = Math.min(5, Math.max(1, Number(rating_value) || 5));
     const feedback = (review || 'Great trip to VESIT campus!').trim();
 
-    // Check if rating already exists for this booking
     const existing = await query<any[]>('SELECT rating_id FROM Ratings WHERE booking_id = ?', [bId]);
     if (existing && existing.length > 0) {
       await query('UPDATE Ratings SET rating_value = ?, review = ?, created_at = NOW() WHERE booking_id = ?', [stars, feedback, bId]);
