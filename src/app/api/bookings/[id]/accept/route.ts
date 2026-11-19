@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query, mockDb } from '@/lib/db';
 
-// Accept booking request
+// accept booking
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }

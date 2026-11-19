@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query, mockDb } from '@/lib/db';
 
-// User signup
 export async function POST(req: NextRequest) {
   try {
     const { username, password } = await req.json();

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query, mockDb } from '@/lib/db';
 
-// Reject booking request
+// reject booking
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }

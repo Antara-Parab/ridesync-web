@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 
-// Reset database for demonstration
+// reset db
 export async function POST() {
   try {
     await query('DELETE FROM Ratings WHERE booking_id > 5');

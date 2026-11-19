@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 
-// Complete trip and log audit
+// complete ride
 export async function POST(req: NextRequest) {
   try {
     const { ride_id } = await req.json();

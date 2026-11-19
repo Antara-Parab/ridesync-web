@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 
-// Submit rating
+// submit rating
 export async function POST(req: NextRequest) {
   try {
     const { booking_id, rating_value, review } = await req.json();
@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
   }
 }
 
-// Fetch all ratings
+// get ratings
 export async function GET() {
   try {
     const rows = await query<any[]>('SELECT * FROM Ratings ORDER BY rating_id DESC');

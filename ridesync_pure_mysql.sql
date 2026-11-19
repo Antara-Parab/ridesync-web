@@ -4,7 +4,7 @@ USE ridesync_db;
 
 SET GLOBAL log_bin_trust_function_creators = 1;
 
--- Users Table
+-- Users
 CREATE TABLE Users (
     user_id INT AUTO_INCREMENT PRIMARY KEY,
     full_name VARCHAR(100) NOT NULL,
@@ -14,7 +14,7 @@ CREATE TABLE Users (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
 
--- Vehicles Table
+-- Vehicles
 CREATE TABLE Vehicles (
     vehicle_id INT AUTO_INCREMENT PRIMARY KEY,
     owner_id INT NOT NULL,
@@ -27,7 +27,7 @@ CREATE TABLE Vehicles (
     CONSTRAINT chk_vehicle_capacity CHECK (capacity > 0)
 ) ENGINE=InnoDB;
 
--- Rides Table
+-- Rides
 CREATE TABLE Rides (
     ride_id INT AUTO_INCREMENT PRIMARY KEY,
     driver_id INT NOT NULL,
@@ -48,7 +48,7 @@ CREATE TABLE Rides (
     CONSTRAINT chk_cost_per_seat CHECK (cost_per_seat >= 0)
 ) ENGINE=InnoDB;
 
--- Bookings Table
+-- Bookings
 CREATE TABLE Bookings (
     booking_id INT AUTO_INCREMENT PRIMARY KEY,
     ride_id INT NOT NULL,
@@ -65,7 +65,7 @@ CREATE TABLE Bookings (
     CONSTRAINT chk_seats_requested CHECK (seats_requested > 0)
 ) ENGINE=InnoDB;
 
--- Ratings Table
+-- Ratings
 CREATE TABLE Ratings (
     rating_id INT AUTO_INCREMENT PRIMARY KEY,
     booking_id INT NOT NULL,
@@ -77,7 +77,7 @@ CREATE TABLE Ratings (
     CONSTRAINT chk_rating_range CHECK (rating_value BETWEEN 1 AND 5)
 ) ENGINE=InnoDB;
 
--- Ride Logs Table
+-- Ride_Logs
 CREATE TABLE Ride_Logs (
     log_id INT AUTO_INCREMENT PRIMARY KEY,
     ride_id INT NOT NULL,
@@ -86,11 +86,11 @@ CREATE TABLE Ride_Logs (
     changed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
 
--- Performance Indexes
+-- Indexes
 CREATE INDEX idx_rides_search ON Rides(source, destination, ride_date, status);
 CREATE INDEX idx_bookings_status ON Bookings(ride_id, booking_status);
 
--- Active Rides View
+-- Active rides view
 CREATE OR REPLACE VIEW vw_AvailableActiveRides AS
 SELECT 
     r.ride_id,
@@ -110,7 +110,7 @@ JOIN Users u ON r.driver_id = u.user_id
 JOIN Vehicles v ON r.vehicle_id = v.vehicle_id
 WHERE r.status = 'ACTIVE' AND r.available_seats > 0;
 
--- Driver Analytics View
+-- Driver analytics view
 CREATE OR REPLACE VIEW vw_DriverAnalytics AS
 SELECT 
     u.user_id AS driver_id,
@@ -124,7 +124,7 @@ GROUP BY u.user_id, u.full_name;
 
 DELIMITER $$
 
--- Prevent Self-Booking Trigger
+-- Prevent self-booking
 DROP TRIGGER IF EXISTS trg_prevent_self_booking$$
 CREATE TRIGGER trg_prevent_self_booking
 BEFORE INSERT ON Bookings
@@ -138,7 +138,7 @@ BEGIN
     END IF;
 END$$
 
--- Ride Status Audit Trigger
+-- Audit status trigger
 DROP TRIGGER IF EXISTS trg_ride_status_audit$$
 CREATE TRIGGER trg_ride_status_audit
 AFTER UPDATE ON Rides
@@ -150,7 +150,7 @@ BEGIN
     END IF;
 END$$
 
--- Fare Calculation Function
+-- Fare calculation function
 DROP FUNCTION IF EXISTS fn_CalculateFareWithDiscount$$
 CREATE FUNCTION fn_CalculateFareWithDiscount(
     p_cost_per_seat DECIMAL(8,2),
@@ -168,7 +168,7 @@ BEGIN
     RETURN ROUND(v_total, 2);
 END$$
 
--- Accept Booking Procedure
+-- Accept booking procedure
 DROP PROCEDURE IF EXISTS sp_AcceptBooking$$
 CREATE PROCEDURE sp_AcceptBooking(
     IN p_booking_id INT,
@@ -227,7 +227,7 @@ proc_label: BEGIN
     END IF;
 END$$
 
--- Driver Ride Manifest Cursor Procedure
+-- Driver manifest procedure
 DROP PROCEDURE IF EXISTS sp_DriverRideReport$$
 CREATE PROCEDURE sp_DriverRideReport(
     IN p_driver_id INT
@@ -273,7 +273,7 @@ END$$
 
 DELIMITER ;
 
--- Seed Data: Users
+-- Users
 INSERT INTO Users (user_id, full_name, email, password_hash, phone) VALUES
 (1, 'Aarav Sharma',   'aarav.sharma@ves.ac.in',   'hash_aarav_99',   '9820112233'),
 (2, 'Priya Patel',    'priya.patel@ves.ac.in',    'hash_priya_88',   '9820223344'),
@@ -284,14 +284,14 @@ INSERT INTO Users (user_id, full_name, email, password_hash, phone) VALUES
 (7, 'Devansh Joshi',  'devansh.joshi@ves.ac.in',  'hash_devansh_33', '9820778899'),
 (8, 'Isha Deshmukh',  'isha.deshmukh@ves.ac.in',  'hash_isha_22',    '9820889900');
 
--- Seed Data: Vehicles
+-- Vehicles
 INSERT INTO Vehicles (vehicle_id, owner_id, vehicle_number, model, capacity) VALUES
 (1, 1, 'MH-01-AB-1234', 'Hyundai i20',      4),
 (2, 2, 'MH-02-CD-5678', 'Honda City',       4),
 (3, 3, 'MH-03-EF-9012', 'Maruti Baleno',    3),
 (4, 5, 'MH-04-GH-3456', 'Tata Nexon EV',    4);
 
--- Seed Data: Rides
+-- Rides
 INSERT INTO Rides (ride_id, driver_id, vehicle_id, source, destination, ride_date, departure_time, available_seats, cost_per_seat, status) VALUES
 (1, 1, 1, 'Chembur',   'VESIT Campus', '2026-10-26', '08:15:00', 1, 40.00,  'ACTIVE'),
 (2, 2, 2, 'Thane',     'VESIT Campus', '2026-10-26', '07:45:00', 3, 75.00,  'ACTIVE'),
@@ -299,7 +299,7 @@ INSERT INTO Rides (ride_id, driver_id, vehicle_id, source, destination, ride_dat
 (4, 5, 4, 'Vashi',     'VESIT Campus', '2026-10-26', '08:00:00', 4, 60.00,  'ACTIVE'),
 (5, 1, 1, 'Ghatkopar', 'VESIT Campus', '2026-10-25', '08:30:00', 0, 35.00,  'COMPLETED');
 
--- Seed Data: Bookings
+-- Bookings
 INSERT INTO Bookings (booking_id, ride_id, passenger_id, seats_requested, booking_status, booked_at) VALUES
 (1, 1, 4, 1, 'PENDING',  '2026-10-25 18:00:00'),
 (2, 1, 6, 2, 'PENDING',  '2026-10-25 18:30:00'),
@@ -307,11 +307,11 @@ INSERT INTO Bookings (booking_id, ride_id, passenger_id, seats_requested, bookin
 (4, 3, 8, 1, 'ACCEPTED', '2026-10-25 19:30:00'),
 (5, 5, 4, 1, 'ACCEPTED', '2026-10-24 20:00:00');
 
--- Seed Data: Ratings
+-- Ratings
 INSERT INTO Ratings (rating_id, booking_id, rating_value, review) VALUES
 (1, 5, 5, 'Punctual driver, smooth ride to morning lecture!');
 
--- Seed Data: Ride Logs
+-- Ride_Logs
 INSERT INTO Ride_Logs (ride_id, old_status, new_status, changed_at) VALUES
 (5, 'ACTIVE', 'COMPLETED', '2026-10-25 09:30:00');
 
